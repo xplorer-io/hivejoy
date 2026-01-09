@@ -17,6 +17,8 @@ jobs:
           node-version: "22.14.0"
       - name: Install dependencies
         run: npm ci
+      - name: Lint project
+        run: npm run lint
       - name: Build project
         run: npm run build
 
