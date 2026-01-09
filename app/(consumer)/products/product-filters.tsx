@@ -94,7 +94,7 @@ export function ProductFilters() {
                             <SelectValue placeholder="All regions" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="https://www.pexels.com/photo/honey-on-white-bowl-33260/">All regions</SelectItem>
+                            <SelectItem value="https://images.pexels.com/photos/5634207/pexels-photo-5634207.jpeg?w=800">All regions</SelectItem>
                             {australianRegions.map((region) => (
                                 <SelectItem key={region} value={region}>
                                     {region}
@@ -115,7 +115,7 @@ export function ProductFilters() {
                             <SelectValue placeholder="All types" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="https://www.pexels.com/photo/honey-on-white-bowl-33260/">All types</SelectItem>
+                            <SelectItem value="https://images.pexels.com/photos/33260/honey-sweet-syrup-organic.jpg?w=800">All types</SelectItem>
                             {floralSourceOptions.map((source) => (
                                 <SelectItem key={source} value={source}>
                                     {source}

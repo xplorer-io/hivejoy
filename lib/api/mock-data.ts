@@ -226,7 +226,7 @@ export const mockProducts: Product[] = [
     title: 'Mudgee Wildflower Blend',
     description: 'A delightful blend of wildflower nectars from the rolling hills of Mudgee wine country. Light and floral with notes of clover and native blossoms. Pairs beautifully with cheese boards and fresh bread.',
     photos: [
-      'https://images.unsplash.com/photo-1550411294-098c0dc9db6f?w=800',
+      'https://images.pexels.com/photos/5634208/pexels-photo-5634208.jpeg?w=800',
       'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=800',
     ],
     status: 'approved',
