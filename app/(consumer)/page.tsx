@@ -135,7 +135,7 @@ export default async function HomePage() {
                 </div>
                 <h3 className="font-semibold mb-2">No Direct Access</h3>
                 <p className="text-sm text-muted-foreground">
-                  Producers can't reach consumers directly
+                  Producers can&#39;t reach consumers directly
                 </p>
               </div>
               <div className="p-6 bg-background rounded-lg border">
@@ -222,7 +222,7 @@ export default async function HomePage() {
           <h2 className="text-3xl md:text-4xl font-bold mb-4">The Hive Joy Seal</h2>
           <p className="text-lg text-muted-foreground mb-6">
             Every producer on our platform is verified and certified. Look for the 
-            Hive Joy Seal to ensure you're buying authentic Australian honey directly 
+            Hive Joy Seal to ensure you&#39;re buying authentic Australian honey directly 
             from the source.
           </p>
           <div className="flex items-center justify-center gap-2 text-sm font-medium">
