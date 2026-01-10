@@ -24,9 +24,9 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4">
+      <div className="container flex h-16 items-center justify-between px-4 gap-4 md:gap-0">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2 flex-shrink-0">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <span className="text-lg font-bold text-primary-foreground">🍯</span>
           </div>
@@ -34,7 +34,7 @@ export function Header() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-6 ml-4 md:ml-0">
           <Link href="/products" className="text-sm font-medium hover:text-primary transition-colors">
             Browse Honey
           </Link>
