@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import { AuthProvider } from './auth-provider';
+import { AuthSessionProvider } from './session-provider';
 import { DevRoleSwitcher } from '@/components/dev/role-switcher';
 
 interface ProvidersProps {
@@ -10,10 +11,12 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <AuthProvider>
-      {children}
-      <DevRoleSwitcher />
-    </AuthProvider>
+    <AuthSessionProvider>
+      <AuthProvider>
+        {children}
+        <DevRoleSwitcher />
+      </AuthProvider>
+    </AuthSessionProvider>
   );
 }
 
