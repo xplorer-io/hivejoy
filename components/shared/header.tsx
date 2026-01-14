@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { signOut, useSession } from 'next-auth/react';
 import { useAuthStore, useCartStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,8 +20,25 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export function Header() {
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { data: session } = useSession(); // Check NextAuth session directly
   const itemCount = useCartStore((state) => state.getItemCount());
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Use NextAuth session as fallback if Zustand store hasn't synced yet
+  const isUserAuthenticated = isAuthenticated || !!session?.user;
+  const displayUser = user || (session?.user ? {
+    id: session.user.id || '',
+    email: session.user.email || '',
+    role: session.user.role || 'consumer',
+    status: 'active' as const,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  } : null);
+
+  const handleSignOut = async () => {
+    logout();
+    await signOut({ callbackUrl: '/' });
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -74,7 +92,7 @@ export function Header() {
           </Link>
 
           {/* User Menu */}
-          {isAuthenticated ? (
+          {isUserAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -84,15 +102,15 @@ export function Header() {
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
-                    <span>{user?.email}</span>
-                    <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
+                    <span>{displayUser?.email}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{displayUser?.role}</span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/orders">My Orders</Link>
                 </DropdownMenuItem>
-                {user?.role === 'producer' && (
+                {displayUser?.role === 'producer' && (
                   <DropdownMenuItem asChild>
                     <Link href="/seller/dashboard" className="flex items-center gap-2">
                       <Store className="h-4 w-4" />
@@ -100,7 +118,7 @@ export function Header() {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {user?.role === 'admin' && (
+                {displayUser?.role === 'admin' && (
                   <DropdownMenuItem asChild>
                     <Link href="/admin/dashboard" className="flex items-center gap-2">
                       <Shield className="h-4 w-4" />
@@ -109,7 +127,7 @@ export function Header() {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} className="text-destructive">
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                   Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -137,12 +155,12 @@ export function Header() {
                 <Link href="/producers" className="text-lg font-medium hover:text-primary">
                   Our Producers
                 </Link>
-                {user?.role === 'producer' && (
+                {displayUser?.role === 'producer' && (
                   <Link href="/seller/dashboard" className="text-lg font-medium hover:text-primary">
                     Seller Dashboard
                   </Link>
                 )}
-                {user?.role === 'admin' && (
+                {displayUser?.role === 'admin' && (
                   <Link href="/admin/dashboard" className="text-lg font-medium hover:text-primary">
                     Admin Portal
                   </Link>

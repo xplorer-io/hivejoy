@@ -1,19 +1,41 @@
 'use client';
 
 import { useEffect, ReactNode } from 'react';
+import { useSession } from 'next-auth/react';
 import { useAuthStore } from '@/lib/stores';
+import type { UserRole } from '@/types';
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const setLoading = useAuthStore((state) => state.setLoading);
+  const { data: session, status } = useSession();
+  const { setUser, setLoading } = useAuthStore();
 
+  // Sync NextAuth session with Zustand store globally
   useEffect(() => {
-    // Hydration complete - set loading to false
+    if (status === 'loading') {
+      setLoading(true);
+      return;
+    }
+
     setLoading(false);
-  }, [setLoading]);
+
+    if (session?.user) {
+      setUser({
+        id: session.user.id || `user-${Date.now()}`,
+        email: session.user.email || '',
+        role: (session.user.role as UserRole) || 'consumer',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    } else {
+      // Clear user if session is null (signed out)
+      setUser(null);
+    }
+  }, [session, status, setUser, setLoading]);
 
   return <>{children}</>;
 }

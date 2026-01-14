@@ -12,6 +12,7 @@
     "node": "^22.14.0"
   },
   "dependencies": {
+    "@auth/core": "^0.41.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -26,6 +27,7 @@
     "lucide-react": "^0.562.0",
     "luxon": "^3.7.2",
     "next": "16.1.1",
+    "next-auth": "^5.0.0-beta.30",
     "next-pwa": "^5.6.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
