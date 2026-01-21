@@ -1,9 +1,9 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useAuthStore } from '@/lib/stores';
+import { useAuthStore, useCartStore } from '@/lib/stores';
 import { getOrders } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,8 +30,124 @@ const statusConfig: Record<
 function SuccessMessage() {
   const searchParams = useSearchParams();
   const showSuccess = searchParams.get('success') === 'true';
+  const sessionId = searchParams.get('session_id');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'pending' | 'verified' | 'failed'>('idle');
+  const { clearCart } = useCartStore();
+  const [cartCleared, setCartCleared] = useState(false);
+  const hasFinalStatus = useRef(false);
+
+  useEffect(() => {
+    if (!showSuccess) {
+      return;
+    }
+
+    if (!sessionId) {
+      setStatus('failed');
+      return;
+    }
+
+    if (hasFinalStatus.current) {
+      return;
+    }
+
+    let isActive = true;
+    setStatus('loading');
+
+    fetch(`/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`)
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to verify payment');
+        }
+        return data;
+      })
+      .then((data) => {
+        if (!isActive) return;
+        const isPaid = data.paid === true;
+        const isVerified = data.verified === true;
+        const nextStatus = isVerified ? (isPaid ? 'verified' : 'failed') : 'pending';
+        if (isVerified) {
+          hasFinalStatus.current = true;
+        }
+        setStatus(nextStatus);
+        if (isPaid && isVerified && !cartCleared) {
+          clearCart();
+          setCartCleared(true);
+        }
+      })
+      .catch(() => {
+        if (!isActive) return;
+        if (hasFinalStatus.current) return;
+        setStatus('failed');
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [showSuccess, sessionId, cartCleared, clearCart]);
 
   if (!showSuccess) return null;
+
+  if (status === 'loading' || status === 'idle') {
+    return (
+      <Card className="mb-8 border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
+        <CardContent className="p-6 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+            <Clock className="h-6 w-6 text-amber-700" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-amber-900 dark:text-amber-100">
+              Verifying your payment...
+            </h2>
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              Please wait while we confirm your Stripe checkout.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (status === 'failed') {
+    return (
+      <Card className="mb-8 border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800">
+        <CardContent className="p-6 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+            <Clock className="h-6 w-6 text-red-700" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-red-900 dark:text-red-100">
+              Payment verification incomplete
+            </h2>
+            <p className="text-sm text-red-800 dark:text-red-200">
+              We couldn&apos;t verify this payment yet. If you were charged, please
+              contact support.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (status === 'pending') {
+    return (
+      <Card className="mb-8 border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
+        <CardContent className="p-6 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+            <Clock className="h-6 w-6 text-amber-700" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-amber-900 dark:text-amber-100">
+              Payment awaiting confirmation
+            </h2>
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              We&apos;ll update this order once Stripe confirms your payment.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="mb-8 border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
@@ -56,6 +172,11 @@ function OrdersContent() {
   const { user, isAuthenticated } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const successBanner = (
+    <Suspense fallback={null}>
+      <SuccessMessage />
+    </Suspense>
+  );
 
   useEffect(() => {
     async function fetchOrders() {
@@ -80,6 +201,7 @@ function OrdersContent() {
   if (!isAuthenticated) {
     return (
       <div className="container px-4 py-16">
+        {successBanner}
         <div className="max-w-md mx-auto text-center">
           <h1 className="text-2xl font-bold mb-2">Sign in to view orders</h1>
           <p className="text-muted-foreground mb-6">
@@ -95,9 +217,7 @@ function OrdersContent() {
 
   return (
     <div className="container px-4 py-8">
-      <Suspense fallback={null}>
-        <SuccessMessage />
-      </Suspense>
+      {successBanner}
 
       <h1 className="text-3xl font-bold mb-8">My Orders</h1>
 
