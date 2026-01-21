@@ -31,10 +31,15 @@ function SuccessMessage() {
   const searchParams = useSearchParams();
   const showSuccess = searchParams.get('success') === 'true';
   const sessionId = searchParams.get('session_id');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'pending' | 'verified' | 'failed'>('idle');
+  const [asyncStatus, setAsyncStatus] = useState<'pending' | 'verified' | 'failed' | null>(null);
   const { clearCart } = useCartStore();
   const [cartCleared, setCartCleared] = useState(false);
   const hasFinalStatus = useRef(false);
+  const status = !showSuccess
+    ? 'idle'
+    : !sessionId
+      ? 'failed'
+      : asyncStatus ?? 'loading';
 
   useEffect(() => {
     if (!showSuccess) {
@@ -42,7 +47,6 @@ function SuccessMessage() {
     }
 
     if (!sessionId) {
-      setStatus('failed');
       return;
     }
 
@@ -51,7 +55,6 @@ function SuccessMessage() {
     }
 
     let isActive = true;
-    setStatus('loading');
 
     fetch(`/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`)
       .then(async (response) => {
@@ -69,7 +72,7 @@ function SuccessMessage() {
         if (isVerified) {
           hasFinalStatus.current = true;
         }
-        setStatus(nextStatus);
+        setAsyncStatus(nextStatus);
         if (isPaid && isVerified && !cartCleared) {
           clearCart();
           setCartCleared(true);
@@ -78,7 +81,7 @@ function SuccessMessage() {
       .catch(() => {
         if (!isActive) return;
         if (hasFinalStatus.current) return;
-        setStatus('failed');
+        setAsyncStatus('failed');
       });
 
     return () => {
