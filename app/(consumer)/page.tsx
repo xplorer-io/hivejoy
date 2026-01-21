@@ -16,7 +16,6 @@ export default async function HomePage() {
     <div className="flex flex-col">
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950 dark:via-orange-950 dark:to-yellow-950">
-        <div className="absolute inset-0 bg-[url('/honeycomb-pattern.svg')] opacity-5" />
         <div className="container relative px-4 py-20 md:py-32">
           <div className="max-w-2xl">
             <Badge className="mb-4 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">
@@ -28,7 +27,7 @@ export default async function HomePage() {
               the Source
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-4 max-w-xl">
-              Discover verified Australian honey producers. Every jar is traceable 
+              Discover verified Australian honey producers. Every jar is traceable
               to its origin – know your beekeeper, know your honey.
             </p>
             <p className="text-base md:text-lg font-semibold text-foreground mb-8 max-w-xl">
@@ -115,8 +114,8 @@ export default async function HomePage() {
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">The Problem with Honey Today</h2>
             <p className="text-lg text-muted-foreground mb-8">
-              Imported and blended honey dominates retail shelves, often misleading customers. 
-              Local producers lack a platform to sell directly, while consumers struggle to find 
+              Imported and blended honey dominates retail shelves, often misleading customers.
+              Local producers lack a platform to sell directly, while consumers struggle to find
               genuine, traceable Australian honey.
             </p>
             <div className="grid md:grid-cols-3 gap-4 md:gap-6 mt-8 md:mt-12">
@@ -221,8 +220,8 @@ export default async function HomePage() {
           </div>
           <h2 className="text-3xl md:text-4xl font-bold mb-4">The Hive Joy Seal</h2>
           <p className="text-lg text-muted-foreground mb-6">
-            Every producer on our platform is verified and certified. Look for the 
-            Hive Joy Seal to ensure you&#39;re buying authentic Australian honey directly 
+            Every producer on our platform is verified and certified. Look for the
+            Hive Joy Seal to ensure you&#39;re buying authentic Australian honey directly
             from the source.
           </p>
           <div className="flex items-center justify-center gap-2 text-sm font-medium">
@@ -284,7 +283,7 @@ export default async function HomePage() {
               Are You a Honey Producer?
             </h2>
             <p className="text-amber-100 mb-6">
-              Join Hive Joy and connect directly with customers who value authentic, 
+              Join Hive Joy and connect directly with customers who value authentic,
               traceable Australian honey. No middlemen, just you and your bees.
             </p>
             <Link href="/seller/apply">

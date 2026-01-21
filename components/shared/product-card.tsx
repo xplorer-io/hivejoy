@@ -14,6 +14,7 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const lowestPrice = Math.min(...product.variants.map(v => v.price));
   const hasMultipleVariants = product.variants.length > 1;
+  const showVerifiedBadge = product.producer.badgeLevel !== 'none';
 
   return (
     <Link href={`/products/${product.id}`}>
@@ -31,7 +32,7 @@ export function ProductCard({ product }: ProductCardProps) {
               🍯
             </div>
           )}
-          {product.producer.badgeLevel !== 'none' && (
+          {showVerifiedBadge && (
             <Badge className="absolute top-2 left-2 gap-1 bg-amber-500/90 hover:bg-amber-500">
               <Shield className="h-3 w-3" />
               Verified
