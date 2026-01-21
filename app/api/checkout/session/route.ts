@@ -2,17 +2,9 @@ import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
 import { isSessionVerified, clearCheckout } from '@/lib/stripe/checkout-store';
 
-// fixing build without real secrets
-function getStripeClient() {
-  const apiKey = process.env.STRIPE_SECRET_KEY;
-  if (!apiKey) {
-    return null;
-  }
-
-  return new Stripe(apiKey, {
-    apiVersion: '2025-12-15.clover',
-  });
-}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-12-15.clover',
+});
 
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get('session_id');
@@ -32,7 +24,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Session mismatch' }, { status: 403 });
   }
 
-  const stripe = getStripeClient();
+
   if (!stripe) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
   }

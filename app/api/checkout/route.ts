@@ -4,9 +4,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { mockProducts } from '@/lib/api/mock-data';
 import { registerCheckout } from '@/lib/stripe/checkout-store';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-12-15.clover',
-});
+function getStripeClient() {
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  return new Stripe(apiKey, {
+    apiVersion: '2025-12-15.clover',
+  });
+}
 
 interface CheckoutItem {
   productId: string;
@@ -59,6 +66,11 @@ const resolveBaseUrl = () => {
 
 export async function POST(request: NextRequest) {
   try {
+    const stripe = getStripeClient();
+    if (!stripe) {
+      return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
+    }
+
     const body: CheckoutRequest = await request.json();
     const { items, customerInfo, shippingAddress } = body;
 
