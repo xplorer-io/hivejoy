@@ -2,14 +2,26 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useCartStore } from '@/lib/stores';
+import { useRouter } from 'next/navigation';
+import { useCartStore, useAuthStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
 
 export default function CartPage() {
+  const router = useRouter();
   const { items, removeItem, updateQuantity, getSubtotal, clearCart } = useCartStore();
+  const { isAuthenticated } = useAuthStore();
   const subtotal = getSubtotal();
   const shipping = items.length > 0 ? 12.00 : 0; // Simplified flat rate
   const total = subtotal + shipping;
@@ -144,12 +156,39 @@ export default function CartPage() {
               </p>
             </CardContent>
             <CardFooter>
-              <Link href="/checkout" className="w-full">
-                <Button className="w-full gap-2" size="lg">
-                  Checkout
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
+              {isAuthenticated ? (
+                <Link href="/checkout" className="w-full">
+                  <Button className="w-full gap-2" size="lg">
+                    Checkout
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              ) : (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="w-full gap-2" size="lg">
+                      Checkout
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Continue to checkout</DialogTitle>
+                      <DialogDescription>
+                        Sign in to save your details, or continue as a guest.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Link href="/auth">
+                        <Button variant="outline">Sign in</Button>
+                      </Link>
+                      <Button onClick={() => router.push('/checkout')}>
+                        Continue as guest
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
             </CardFooter>
           </Card>
         </div>

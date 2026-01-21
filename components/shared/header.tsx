@@ -14,13 +14,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ShoppingCart, User, Search, Menu, Store, Shield } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export function Header() {
   const { user, isAuthenticated, logout } = useAuthStore();
   const itemCount = useCartStore((state) => state.getItemCount());
   const [searchOpen, setSearchOpen] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const showCartBadge = isHydrated && itemCount > 0;
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, [itemCount]);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -65,7 +71,7 @@ export function Header() {
           <Link href="/cart">
             <Button variant="ghost" size="icon" className="relative">
               <ShoppingCart className="h-5 w-5" />
-              {itemCount > 0 && (
+              {showCartBadge && (
                 <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
                   {itemCount}
                 </Badge>
