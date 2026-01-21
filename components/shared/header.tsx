@@ -14,19 +14,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ShoppingCart, User, Search, Menu, Store, Shield } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export function Header() {
   const { user, isAuthenticated, logout } = useAuthStore();
   const itemCount = useCartStore((state) => state.getItemCount());
   const [searchOpen, setSearchOpen] = useState(false);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useSyncExternalStore(
+    () => () => { },
+    () => true,
+    () => false
+  );
   const showCartBadge = isHydrated && itemCount > 0;
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, [itemCount]);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
