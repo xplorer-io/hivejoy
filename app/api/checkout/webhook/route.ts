@@ -4,15 +4,24 @@ import { markSessionVerified } from '@/lib/stripe/checkout-store';
 
 export const runtime = 'nodejs';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-12-15.clover',
-});
+// fixing build without real secrets
+function getStripeClient() {
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  return new Stripe(apiKey, {
+    apiVersion: '2025-12-15.clover',
+  });
+}
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const stripe = getStripeClient();
 
-  if (!signature || !webhookSecret) {
+  if (!stripe || !signature || !webhookSecret) {
     return NextResponse.json({ error: 'Missing Stripe webhook configuration' }, { status: 400 });
   }
 
