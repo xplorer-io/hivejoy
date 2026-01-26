@@ -109,7 +109,7 @@ export function Header() {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} className="text-destructive">
+                <DropdownMenuItem onClick={() => logout()} className="text-destructive">
                   Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
