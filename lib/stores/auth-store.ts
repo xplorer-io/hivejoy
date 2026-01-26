@@ -14,7 +14,7 @@ interface AuthState {
   setUser: (user: User | null) => void;
   setProducerProfile: (profile: ProducerProfile | null) => void;
   setLoading: (loading: boolean) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   
   // Dev helpers
   devSetRole: (role: UserRole) => void;
@@ -38,12 +38,16 @@ export const useAuthStore = create<AuthState>()(
       
       setLoading: (isLoading) => set({ isLoading }),
       
-      logout: () => set({ 
-        user: null, 
-        producerProfile: null,
-        isAuthenticated: false,
-        isLoading: false,
-      }),
+      logout: async () => {
+        const { signOut } = await import('@/lib/api/auth');
+        await signOut();
+        set({ 
+          user: null, 
+          producerProfile: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+      },
       
       // Development helper to switch roles
       devSetRole: (role) => {
@@ -77,4 +81,3 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
-
