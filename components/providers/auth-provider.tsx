@@ -1,20 +1,32 @@
 'use client';
 
 import { useEffect, ReactNode } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { useAuthStore } from '@/lib/stores';
+import { mapClerkUser } from '@/lib/api/auth';
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const setLoading = useAuthStore((state) => state.setLoading);
+  const { user, isLoaded } = useUser();
+  const { setUser, setLoading } = useAuthStore();
 
   useEffect(() => {
-    // Hydration complete - set loading to false
+    if (!isLoaded) {
+      setLoading(true);
+      return;
+    }
+
+    if (user) {
+      const mappedUser = mapClerkUser(user);
+      setUser(mappedUser);
+    } else {
+      setUser(null);
+    }
     setLoading(false);
-  }, [setLoading]);
+  }, [user, isLoaded, setUser, setLoading]);
 
   return <>{children}</>;
 }
-

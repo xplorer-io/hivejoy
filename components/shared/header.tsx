@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useAuth } from '@clerk/nextjs';
 import { useAuthStore, useCartStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,9 +19,15 @@ import { useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export function Header() {
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const { signOut } = useAuth();
   const itemCount = useCartStore((state) => state.getItemCount());
   const [searchOpen, setSearchOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
+    // AuthProvider will update the store when Clerk signs out
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -109,7 +116,7 @@ export function Header() {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} className="text-destructive">
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                   Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useAuth } from '@clerk/nextjs';
 import { useAuthStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +22,13 @@ const roleConfig: Record<UserRole, { label: string; icon: typeof User; color: st
 };
 
 export function DevRoleSwitcher() {
-  const { user, devSetRole, logout, isAuthenticated } = useAuthStore();
+  const { user, devSetRole, isAuthenticated } = useAuthStore();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    // AuthProvider will update the store when Clerk signs out
+  };
 
   if (process.env.NODE_ENV === 'production') {
     return null;
@@ -67,7 +74,7 @@ export function DevRoleSwitcher() {
           {isAuthenticated && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="text-destructive cursor-pointer">
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
                 Sign Out
               </DropdownMenuItem>
             </>
