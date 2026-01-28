@@ -24,13 +24,29 @@ function mapSupabaseUser(supabaseUser: SupabaseUser): User {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const { setUser, setLoading } = useAuthStore();
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => {
+    // Only create client on the client side
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    try {
+      return createClient();
+    } catch {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined' || !supabase) {
+      setLoading(false);
+      return;
+    }
+
     // Get initial session from Supabase (this will override any stale localStorage data)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(mapSupabaseUser(session.user));
+    supabase.auth.getSession().then(({ data }: { data: { session: { user: SupabaseUser } | null } }) => {
+      if (data.session?.user) {
+        setUser(mapSupabaseUser(data.session.user));
       } else {
         // Clear any stale persisted state if no valid Supabase session
         setUser(null);
@@ -41,7 +57,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event: string, session: { user: SupabaseUser } | null) => {
       if (session?.user) {
         setUser(mapSupabaseUser(session.user));
       } else {

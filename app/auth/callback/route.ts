@@ -8,8 +8,13 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get('next') ?? '/'
 
   if (code) {
-    const supabase = await createClient()
-    await supabase.auth.exchangeCodeForSession(code)
+    try {
+      const supabase = await createClient()
+      await supabase.auth.exchangeCodeForSession(code)
+    } catch (error) {
+      // If Supabase is not configured, just redirect
+      console.warn('Supabase auth callback failed:', error)
+    }
   }
 
   // Redirect to the home page or the next parameter
