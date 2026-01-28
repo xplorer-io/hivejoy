@@ -1,8 +1,30 @@
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-export function createClient() {
+// Minimal type for mock client to avoid 'any'
+type MockSupabaseClient = {
+  auth: {
+    getSession: () => Promise<{ data: { session: null }; error: null }>
+    getUser: () => Promise<{ data: { user: null }; error: null }>
+    onAuthStateChange: () => { data: { subscription: { unsubscribe: () => void } } }
+    signOut: () => Promise<{ error: null }>
+  }
+}
+
+function createMockClient(): MockSupabaseClient {
+  return {
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signOut: () => Promise.resolve({ error: null }),
+    },
+  }
+}
+
+export function createClient(): SupabaseClient | MockSupabaseClient {
   // During build, environment variables might not be available
   // Return a safe fallback that won't break the build
   if (typeof window === 'undefined') {
@@ -12,14 +34,7 @@ export function createClient() {
     
     if (!supabaseUrl || !supabaseKey) {
       // Return a minimal mock that won't break during build
-      return {
-        auth: {
-          getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-          getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-          onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-          signOut: () => Promise.resolve({ error: null }),
-        },
-      } as any
+      return createMockClient()
     }
   }
 

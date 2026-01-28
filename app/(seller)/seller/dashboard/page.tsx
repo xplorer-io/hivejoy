@@ -12,7 +12,6 @@ import {
   Package,
   DollarSign,
   ShoppingCart,
-  TrendingUp,
   Plus,
   ArrowRight,
   Layers,

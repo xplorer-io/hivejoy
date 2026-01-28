@@ -1,4 +1,28 @@
 import { cookies } from 'next/headers'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// Minimal type for mock client to avoid 'any'
+type MockSupabaseClient = {
+  auth: {
+    getSession: () => Promise<{ data: { session: null }; error: null }>
+    getUser: () => Promise<{ data: { user: null }; error: null }>
+    signOut: () => Promise<{ error: null }>
+    onAuthStateChange: () => { data: { subscription: { unsubscribe: () => void } } }
+    exchangeCodeForSession: () => Promise<{ data: { session: null }; error: null }>
+  }
+}
+
+function createMockClient(): MockSupabaseClient {
+  return {
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      signOut: () => Promise.resolve({ error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      exchangeCodeForSession: () => Promise.resolve({ data: { session: null }, error: null }),
+    },
+  }
+}
 
 // Lazy import to prevent evaluation during build
 async function getCreateServerClient() {
@@ -6,36 +30,20 @@ async function getCreateServerClient() {
   return createServerClient
 }
 
-export async function createClient() {
+export async function createClient(): Promise<SupabaseClient | MockSupabaseClient> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   // During build, if env vars are missing, return a safe mock
   if (!supabaseUrl || !supabaseKey) {
     // Return a mock client that won't break during build
-    return {
-      auth: {
-        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-        signOut: () => Promise.resolve({ error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-        exchangeCodeForSession: () => Promise.resolve({ data: { session: null }, error: null }),
-      },
-    } as any
+    return createMockClient()
   }
 
   // Double-check env vars are valid (not empty strings)
   // Return mock immediately if missing to prevent createServerClient validation errors
   if (!supabaseUrl || !supabaseKey || supabaseUrl.trim() === '' || supabaseKey.trim() === '') {
-    return {
-      auth: {
-        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-        signOut: () => Promise.resolve({ error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-        exchangeCodeForSession: () => Promise.resolve({ data: { session: null }, error: null }),
-      },
-    } as any
+    return createMockClient()
   }
 
   try {
@@ -70,16 +78,8 @@ export async function createClient() {
         },
       }
     )
-  } catch (error) {
+  } catch {
     // If createServerClient fails (e.g., during build), return a safe mock
-    return {
-      auth: {
-        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-        signOut: () => Promise.resolve({ error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-        exchangeCodeForSession: () => Promise.resolve({ data: { session: null }, error: null }),
-      },
-    } as any
+    return createMockClient()
   }
 }

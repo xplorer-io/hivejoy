@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { ProducerProfile } from '@/types';
-import { Shield, MapPin, Star } from 'lucide-react';
+import { Shield, MapPin } from 'lucide-react';
 
 interface ProducerCardProps {
   producer: ProducerProfile;
