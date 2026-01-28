@@ -55,7 +55,7 @@ export function Header() {
         {/* Actions */}
         <div className="flex items-center gap-2">
           {/* Mobile Search */}
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSearchOpen(true)}>
+          <Button variant="ghost" size="icon" className="md:hidden">
             <Search className="h-5 w-5" />
           </Button>
 

@@ -4,12 +4,17 @@ import { createBrowserClient } from '@supabase/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Minimal type for mock client to avoid 'any'
+// Includes all methods used in the codebase
 type MockSupabaseClient = {
   auth: {
     getSession: () => Promise<{ data: { session: null }; error: null }>
     getUser: () => Promise<{ data: { user: null }; error: null }>
     onAuthStateChange: () => { data: { subscription: { unsubscribe: () => void } } }
     signOut: () => Promise<{ error: null }>
+    signInWithOtp: () => Promise<{ error: { message: string } }>
+    verifyOtp: () => Promise<{ data: { user: null }; error: { message: string } }>
+    updateUser: () => Promise<{ error: { message: string } }>
+    signInWithOAuth: () => Promise<{ error: { message: string } }>
   }
 }
 
@@ -20,6 +25,10 @@ function createMockClient(): MockSupabaseClient {
       getUser: () => Promise.resolve({ data: { user: null }, error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       signOut: () => Promise.resolve({ error: null }),
+      signInWithOtp: () => Promise.resolve({ error: { message: 'Supabase not configured' } }),
+      verifyOtp: () => Promise.resolve({ data: { user: null }, error: { message: 'Supabase not configured' } }),
+      updateUser: () => Promise.resolve({ error: { message: 'Supabase not configured' } }),
+      signInWithOAuth: () => Promise.resolve({ error: { message: 'Supabase not configured' } }),
     },
   }
 }
