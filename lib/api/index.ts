@@ -33,13 +33,8 @@ export {
   getSellerOrderStats,
 } from './orders';
 
-// Auth
-export {
-  sendOTP,
-  verifyOTP,
-  getCurrentUser,
-  devSwitchRole,
-} from './auth';
+// Auth - Client-only, import directly from './auth' in client components
+// Not exported here to avoid server/client boundary issues
 
 // Admin
 export {

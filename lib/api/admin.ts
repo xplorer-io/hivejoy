@@ -101,7 +101,8 @@ export async function approveListing(productId: string): Promise<Product | null>
   return mockProducts[index];
 }
 
-export async function rejectListing(productId: string, reason: string): Promise<Product | null> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function rejectListing(productId: string, _reason: string): Promise<Product | null> {
   await delay(300);
   
   const index = mockProducts.findIndex(p => p.id === productId);
@@ -116,9 +117,6 @@ export async function rejectListing(productId: string, reason: string): Promise<
 // Dashboard Stats
 export async function getAdminStats() {
   await delay(300);
-  
-  const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   
   return {
     totalProducers: mockProducers.length,

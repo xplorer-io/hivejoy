@@ -4,11 +4,10 @@ import Link from 'next/link';
 import { getProduct } from '@/lib/api';
 import { ProvenanceDisplay } from '@/components/shared';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AddToCartButton } from './add-to-cart-button';
-import { ChevronLeft, Shield, Star } from 'lucide-react';
+import { ChevronLeft, Shield } from 'lucide-react';
 
 interface ProductPageProps {
   params: Promise<{ id: string }>;

@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, UserRole, ProducerProfile } from '@/types';
+import { createClient } from '@/lib/supabase/client';
 
 interface AuthState {
   user: User | null;
@@ -14,7 +15,7 @@ interface AuthState {
   setUser: (user: User | null) => void;
   setProducerProfile: (profile: ProducerProfile | null) => void;
   setLoading: (loading: boolean) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   
   // Dev helpers
   devSetRole: (role: UserRole) => void;
@@ -38,12 +39,16 @@ export const useAuthStore = create<AuthState>()(
       
       setLoading: (isLoading) => set({ isLoading }),
       
-      logout: () => set({ 
-        user: null, 
-        producerProfile: null,
-        isAuthenticated: false,
-        isLoading: false,
-      }),
+      logout: async () => {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+        set({ 
+          user: null, 
+          producerProfile: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+      },
       
       // Development helper to switch roles
       devSetRole: (role) => {
@@ -77,4 +82,3 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
-

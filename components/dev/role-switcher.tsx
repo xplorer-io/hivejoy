@@ -67,7 +67,7 @@ export function DevRoleSwitcher() {
           {isAuthenticated && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="text-destructive cursor-pointer">
+              <DropdownMenuItem onClick={() => logout()} className="text-destructive cursor-pointer">
                 Sign Out
               </DropdownMenuItem>
             </>

@@ -32,7 +32,7 @@ function ProductGridSkeleton() {
 }
 
 async function ProductGrid({ filters, page }: { filters: ProductFiltersType; page: number }) {
-    const { data: products, total, totalPages } = await getProducts(filters, page, 12);
+    const { data: products, total } = await getProducts(filters, page, 12);
 
     if (products.length === 0) {
         return (

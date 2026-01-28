@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useCartStore, useAuthStore } from '@/lib/stores';
+import { useCartStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +33,6 @@ const australianStates = [
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, getSubtotal, clearCart } = useCartStore();
-  const { isAuthenticated } = useAuthStore();
   const [isProcessing, setIsProcessing] = useState(false);
 
   const subtotal = getSubtotal();

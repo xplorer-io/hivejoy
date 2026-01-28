@@ -88,7 +88,6 @@ export default function BatchesPage() {
         <div className="grid md:grid-cols-2 gap-4">
           {batches.map((batch) => {
             const harvestDate = DateTime.fromISO(batch.harvestDate);
-            const extractionDate = DateTime.fromISO(batch.extractionDate);
 
             return (
               <Link key={batch.id} href={`/seller/batches/${batch.id}`}>
