@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { Header, Footer } from '@/components/shared';
 
 export default function ConsumerLayout({
@@ -6,11 +7,10 @@ export default function ConsumerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col overflow-x-clip">
       <Header />
-      <main className="flex-1">{children}</main>
+      <div className="flex-1">{children}</div>
       <Footer />
     </div>
   );
 }
-

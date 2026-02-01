@@ -24,21 +24,27 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4 gap-4 md:gap-0">
+      <div className="fluid-container flex h-16 items-center justify-between gap-4 md:gap-0">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 flex-shrink-0">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <span className="text-lg font-bold text-primary-foreground">🍯</span>
+            <span className="text-lg font-bold text-primary-foreground">
+              🍯
+            </span>
           </div>
           <span className="text-xl font-bold tracking-tight">Hive Joy</span>
         </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6 ml-4 md:ml-0">
-          <Link href="/products" className="text-sm font-medium hover:text-primary transition-colors">
+          <Link
+            href="/products"
+            className="text-sm font-medium hover:text-primary transition-colors">
             Browse Honey
           </Link>
-          <Link href="/producers" className="text-sm font-medium hover:text-primary transition-colors">
+          <Link
+            href="/producers"
+            className="text-sm font-medium hover:text-primary transition-colors">
             Our Producers
           </Link>
         </nav>
@@ -56,24 +62,25 @@ export function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          {/* Mobile Search */}
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSearchOpen(true)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setSearchOpen(true)}>
             <Search className="h-5 w-5" />
           </Button>
 
-          {/* Cart */}
-          <Link href="/cart">
-            <Button variant="ghost" size="icon" className="relative">
+          <Button asChild variant="ghost" size="icon" className="relative">
+            <Link href="/cart" aria-label="Open cart">
               <ShoppingCart className="h-5 w-5" />
               {itemCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center">
                   {itemCount}
                 </Badge>
               )}
-            </Button>
-          </Link>
+            </Link>
+          </Button>
 
-          {/* User Menu */}
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -85,7 +92,9 @@ export function Header() {
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
                     <span>{user?.email}</span>
-                    <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
+                    <span className="text-xs text-muted-foreground capitalize">
+                      {user?.role}
+                    </span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -94,7 +103,9 @@ export function Header() {
                 </DropdownMenuItem>
                 {user?.role === 'producer' && (
                   <DropdownMenuItem asChild>
-                    <Link href="/seller/dashboard" className="flex items-center gap-2">
+                    <Link
+                      href="/seller/dashboard"
+                      className="flex items-center gap-2">
                       <Store className="h-4 w-4" />
                       Seller Dashboard
                     </Link>
@@ -102,7 +113,9 @@ export function Header() {
                 )}
                 {user?.role === 'admin' && (
                   <DropdownMenuItem asChild>
-                    <Link href="/admin/dashboard" className="flex items-center gap-2">
+                    <Link
+                      href="/admin/dashboard"
+                      className="flex items-center gap-2">
                       <Shield className="h-4 w-4" />
                       Admin Portal
                     </Link>
@@ -122,7 +135,6 @@ export function Header() {
             </Link>
           )}
 
-          {/* Mobile Menu */}
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
@@ -131,19 +143,27 @@ export function Header() {
             </SheetTrigger>
             <SheetContent side="right" className="w-72">
               <nav className="flex flex-col gap-4 mt-8">
-                <Link href="/products" className="text-lg font-medium hover:text-primary">
+                <Link
+                  href="/products"
+                  className="text-lg font-medium hover:text-primary">
                   Browse Honey
                 </Link>
-                <Link href="/producers" className="text-lg font-medium hover:text-primary">
+                <Link
+                  href="/producers"
+                  className="text-lg font-medium hover:text-primary">
                   Our Producers
                 </Link>
                 {user?.role === 'producer' && (
-                  <Link href="/seller/dashboard" className="text-lg font-medium hover:text-primary">
+                  <Link
+                    href="/seller/dashboard"
+                    className="text-lg font-medium hover:text-primary">
                     Seller Dashboard
                   </Link>
                 )}
                 {user?.role === 'admin' && (
-                  <Link href="/admin/dashboard" className="text-lg font-medium hover:text-primary">
+                  <Link
+                    href="/admin/dashboard"
+                    className="text-lg font-medium hover:text-primary">
                     Admin Portal
                   </Link>
                 )}
@@ -155,4 +175,3 @@ export function Header() {
     </header>
   );
 }
-
