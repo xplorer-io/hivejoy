@@ -1,67 +1,76 @@
 'use client';
 
-import Link from 'next/link';
-import Image from 'next/image';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import * as React from 'react';
+import { CardContent } from '@/components/ui/card';
 import type { ProductWithDetails } from '@/types';
-import { Shield, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
+
+import { CardFrame } from '@/components/marketing/cards/card-frame';
+import { Media } from '@/components/marketing/cards/media';
+import { MetaRow } from '@/components/marketing/cards/meta-row';
+import { ProducerBadge } from '@/components/marketing/cards/producer-badge';
 
 interface ProductCardProps {
   product: ProductWithDetails;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
-  const lowestPrice = Math.min(...product.variants.map(v => v.price));
-  const hasMultipleVariants = product.variants.length > 1;
-
-  return (
-    <Link href={`/products/${product.id}`}>
-      <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 h-full">
-        <div className="aspect-square relative overflow-hidden bg-muted">
-          {product.photos[0] ? (
-            <Image
-              src={product.photos[0]}
-              alt={product.title}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl">
-              🍯
-            </div>
-          )}
-          {product.producer.badgeLevel !== 'none' && (
-            <Badge className="absolute top-2 left-2 gap-1 bg-amber-500/90 hover:bg-amber-500">
-              <Shield className="h-3 w-3" />
-              Verified
-            </Badge>
-          )}
-        </div>
-        <CardContent className="p-4 space-y-2">
-          <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
-            {product.title}
-          </h3>
-          <p className="text-sm text-muted-foreground line-clamp-1">
-            {product.producer.businessName}
-          </p>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <MapPin className="h-3 w-3" />
-            <span className="line-clamp-1">{product.batch.region}</span>
-          </div>
-          <div className="flex items-baseline gap-1 pt-2">
-            <span className="text-lg font-bold text-primary">
-              ${lowestPrice.toFixed(2)}
-            </span>
-            {hasMultipleVariants && (
-              <span className="text-xs text-muted-foreground">
-                from
-              </span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
+function getLowestPrice(product: ProductWithDetails) {
+  const prices =
+    product.variants?.map((v) => v.price).filter((n) => Number.isFinite(n)) ??
+    [];
+  return prices.length ? Math.min(...prices) : 0;
 }
 
+export function ProductCard({ product }: ProductCardProps) {
+  const lowestPrice = getLowestPrice(product);
+  const hasMultipleVariants = (product.variants?.length ?? 0) > 1;
+
+  const photo = product.photos?.[0] ?? null;
+  const region = product.batch?.region ?? 'Unknown region';
+  const producerName = product.producer?.businessName ?? 'Unknown producer';
+  const badgeLevel = product.producer?.badgeLevel ?? 'none';
+
+  return (
+    <CardFrame
+      href={`/products/${product.id}`}
+      aria-label={`View product: ${product.title}`}>
+      <Media
+        src={photo}
+        alt={product.title}
+        aspect="square"
+        className="rounded-b-none"
+        fallback={<span className="text-4xl">🍯</span>}
+      />
+
+      {/* Floating badge (overlay) */}
+      <div className="absolute left-3 top-3">
+        <ProducerBadge level={badgeLevel as any} />
+      </div>
+
+      <CardContent className="p-4">
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold leading-snug tracking-tight text-foreground/95 line-clamp-2 transition-colors group-hover:text-primary">
+            {product.title}
+          </h3>
+
+          <p className="text-xs text-muted-foreground line-clamp-1">
+            {producerName}
+          </p>
+
+          <MetaRow icon={MapPin}>{region}</MetaRow>
+
+          <div className="pt-2">
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg font-semibold tracking-tight text-foreground">
+                ${lowestPrice.toFixed(2)}
+              </span>
+              {hasMultipleVariants ? (
+                <span className="text-xs text-muted-foreground">from</span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </CardFrame>
+  );
+}
