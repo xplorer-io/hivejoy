@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, Shield, Truck, Leaf } from 'lucide-react';
 
