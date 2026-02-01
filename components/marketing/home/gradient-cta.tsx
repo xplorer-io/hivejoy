@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 
 export function GradientCta() {
@@ -9,20 +10,23 @@ export function GradientCta() {
         <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
           Are you a honey producer?
         </h2>
+
         <p className="mt-3 text-amber-50/90">
           Join Hive Joy and connect directly with customers who value authentic,
           traceable Australian honey. No middlemen—just you and your bees.
         </p>
+
         <div className="mt-6">
-          <Link href="/seller/apply">
-            <Button
-              variant="secondary"
-              size="lg"
-              className="h-11 gap-2 rounded-full px-6 shadow-sm transition
-                         hover:-translate-y-[1px] hover:shadow-md active:translate-y-0">
+          <Button
+            asChild
+            variant="secondary"
+            size="lg"
+            className="h-11 gap-2 rounded-full px-6 shadow-sm transition
+                       hover:-translate-y-[1px] hover:shadow-md active:translate-y-0">
+            <Link href="/seller/apply">
               Apply to sell <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </div>
 
