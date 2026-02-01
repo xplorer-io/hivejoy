@@ -51,9 +51,7 @@ export default async function ProductsPage({
     floralSource: sp.floralSource,
     minPrice: sp.minPrice ? Number(sp.minPrice) : undefined,
     maxPrice: sp.maxPrice ? Number(sp.maxPrice) : undefined,
-    page: sp.page ? Number(sp.page) : 1,
-    sort: sp.sort ?? 'relevance',
-  } as any;
+  };
 
   const { data: products, total, page, pageSize } = await getProducts(filters);
 
@@ -108,7 +106,7 @@ export default async function ProductsPage({
 
             <Suspense fallback={<ProductGridSkeleton />}>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6">
-                {products.map((product: any) => (
+                {products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>

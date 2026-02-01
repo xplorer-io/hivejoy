@@ -59,7 +59,7 @@ export function ProducerCard({ producer }: ProducerCardProps) {
           </Avatar>
 
           <div className="pt-3">
-            <ProducerBadge level={producer.badgeLevel as any} />
+            <ProducerBadge level={producer.badgeLevel} />
           </div>
         </div>
 

@@ -44,7 +44,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
       {/* Floating badge (overlay) */}
       <div className="absolute left-3 top-3">
-        <ProducerBadge level={badgeLevel as any} />
+        <ProducerBadge level={badgeLevel} />
       </div>
 
       <CardContent className="p-4">
