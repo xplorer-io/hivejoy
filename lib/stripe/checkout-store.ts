@@ -11,6 +11,7 @@ type CheckoutSnapshot = {
   createdAt: number;
 };
 
+// @TODO: migrate this logic to a database, in memory is not scalable and reliable
 const MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2 hours
 const pendingCheckouts = new Map<string, CheckoutSnapshot>();
 const verifiedSessions = new Set<string>();

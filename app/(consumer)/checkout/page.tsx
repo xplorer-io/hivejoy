@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useCartStore } from '@/lib/stores';
+import { useAuthStore, useCartStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,11 +59,15 @@ const steps = [
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, getSubtotal, clearCart } = useCartStore();
+  const { items, getSubtotal, } = useCartStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [formData, setFormData] = useState<FormData>(initialFormData);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const subtotal = getSubtotal();
+  // @TODO: to be added later: shipping cost and GST
   const shipping = 12.0;
   const gst = subtotal * 0.1;
   const total = subtotal + shipping;
@@ -96,11 +100,7 @@ export default function CheckoutPage() {
 
   const handleSignOut = () => {
     logout();
-    setFormData((prev) => ({
-      ...prev,
-      email: '',
-      phone: '',
-    }));
+    setFormData(initialFormData);
   };
 
   const validateStep = (step: number): boolean => {
@@ -170,6 +170,10 @@ export default function CheckoutPage() {
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      if (!data?.url) {
+        throw new Error('Checkout session URL missing');
       }
 
       window.location.href = data.url;

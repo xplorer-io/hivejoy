@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     const verified = isSessionVerified(sessionId);
-    const paid = verified && session.payment_status === 'paid';
+    const paid = session.payment_status === 'paid';
 
     const response = NextResponse.json({
       status: session.status,

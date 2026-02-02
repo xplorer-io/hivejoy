@@ -52,7 +52,7 @@ const requireLength = (value: string, min: number, max: number) =>
   value.length >= min && value.length <= max;
 
 const resolveBaseUrl = () => {
-  const baseUrl = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL;
+  const baseUrl = process.env.APP_BASE_URL;
   if (baseUrl) {
     return baseUrl;
   }
@@ -185,26 +185,31 @@ export async function POST(request: NextRequest) {
     });
 
     const response = NextResponse.json({ url: session.url });
+    const checkoutCookieMaxAge = 2 * 60 * 60; // keep in sync with checkout-store TTL
+
     response.cookies.set('checkout_nonce', checkoutNonce, {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      maxAge: 60 * 60,
+      maxAge: checkoutCookieMaxAge,
     });
     response.cookies.set('checkout_session', session.id, {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      maxAge: 60 * 60,
+      maxAge: checkoutCookieMaxAge,
     });
 
     return response;
   } catch (error) {
     console.error('Stripe checkout error:', error);
-    const message = error instanceof Error ? error.message : 'Failed to create checkout session';
-    const status = message === 'Invalid cart item' || message === 'Invalid quantity' ? 400 : 500;
+    const isClientError =
+      error instanceof Error &&
+      (error.message === 'Invalid cart item' || error.message === 'Invalid quantity');
+    const status = isClientError ? 400 : 500;
+    const message = isClientError ? error.message : 'Failed to create checkout session';
 
     return NextResponse.json({ error: message }, { status });
   }
