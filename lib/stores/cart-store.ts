@@ -6,6 +6,8 @@ import type { CartItem, Product, ProductVariant } from '@/types';
 
 interface CartState {
   items: CartItem[];
+  hasHydrated: boolean;
+  setHasHydrated: (value: boolean) => void;
 
   // Actions
   addItem: (product: Product, variant: ProductVariant, quantity?: number) => void;
@@ -23,6 +25,8 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      hasHydrated: false,
+      setHasHydrated: (value) => set({ hasHydrated: value }),
 
       addItem: (product, variant, quantity = 1) => {
         set((state) => {
@@ -113,6 +117,9 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'hive-joy-cart',
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
