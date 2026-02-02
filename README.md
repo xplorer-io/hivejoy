@@ -54,6 +54,14 @@ npm run build
 npm start
 ```
 
+.env.example
+```
+STRIPE_SECRET_KEY=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+STRIPE_WEBHOOK_SECRET=
+APP_BASE_URL=
+```
+
 ## 📁 Project Structure
 
 ```

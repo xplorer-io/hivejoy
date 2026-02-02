@@ -6,13 +6,15 @@ import type { CartItem, Product, ProductVariant } from '@/types';
 
 interface CartState {
   items: CartItem[];
-  
+  hasHydrated: boolean;
+  setHasHydrated: (value: boolean) => void;
+
   // Actions
   addItem: (product: Product, variant: ProductVariant, quantity?: number) => void;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
-  
+
   // Computed
   getItemCount: () => number;
   getSubtotal: () => number;
@@ -23,13 +25,15 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      
+      hasHydrated: false,
+      setHasHydrated: (value) => set({ hasHydrated: value }),
+
       addItem: (product, variant, quantity = 1) => {
         set((state) => {
           const existingIndex = state.items.findIndex(
             item => item.variantId === variant.id
           );
-          
+
           if (existingIndex >= 0) {
             // Update quantity of existing item
             const newItems = [...state.items];
@@ -42,7 +46,7 @@ export const useCartStore = create<CartState>()(
             };
             return { items: newItems };
           }
-          
+
           // Add new item
           return {
             items: [
@@ -58,13 +62,13 @@ export const useCartStore = create<CartState>()(
           };
         });
       },
-      
+
       removeItem: (variantId) => {
         set((state) => ({
           items: state.items.filter(item => item.variantId !== variantId),
         }));
       },
-      
+
       updateQuantity: (variantId, quantity) => {
         set((state) => {
           if (quantity <= 0) {
@@ -72,7 +76,7 @@ export const useCartStore = create<CartState>()(
               items: state.items.filter(item => item.variantId !== variantId),
             };
           }
-          
+
           return {
             items: state.items.map(item =>
               item.variantId === variantId
@@ -82,24 +86,24 @@ export const useCartStore = create<CartState>()(
           };
         });
       },
-      
+
       clearCart: () => set({ items: [] }),
-      
+
       getItemCount: () => {
         return get().items.reduce((sum, item) => sum + item.quantity, 0);
       },
-      
+
       getSubtotal: () => {
         return get().items.reduce(
           (sum, item) => sum + item.variant.price * item.quantity,
           0
         );
       },
-      
+
       getCartBySeller: () => {
         const items = get().items;
         const bySeller = new Map<string, CartItem[]>();
-        
+
         items.forEach(item => {
           const sellerId = item.product.producerId;
           if (!bySeller.has(sellerId)) {
@@ -107,12 +111,15 @@ export const useCartStore = create<CartState>()(
           }
           bySeller.get(sellerId)!.push(item);
         });
-        
+
         return bySeller;
       },
     }),
     {
       name: 'hive-joy-cart',
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
