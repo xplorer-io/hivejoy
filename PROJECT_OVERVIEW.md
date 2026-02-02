@@ -56,7 +56,6 @@ We've developed a **production-ready MVP** with three distinct user experiences,
 
 #### **Consumer Experience** (Mobile-First Web App)
 
-#### **Consumer Experience** (Mobile-First Web App)
 - **Browse & Discover**: Beautiful, intuitive product browsing with advanced filtering
 - **Search & Filter**: Find honey by region, floral source, price, and verification status
 - **Product Details**: Complete provenance information on every product page

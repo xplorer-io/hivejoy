@@ -27,9 +27,9 @@ function mapSupabaseUser(supabaseUser: SupabaseUser): User {
 }
 
 export async function sendOTP(emailOrPhone: string): Promise<{ success: boolean; message: string }> {
-  const supabase = createClient()
-  
   try {
+    const supabase = createClient()
+    
     // Validate if it's an email using proper email format validation
     const isEmail = isValidEmail(emailOrPhone)
     
@@ -88,9 +88,9 @@ export async function verifyOTP(
   emailOrPhone: string,
   otp: string
 ): Promise<{ success: boolean; user?: User; message: string }> {
-  const supabase = createClient()
-  
   try {
+    const supabase = createClient()
+    
     // Validate if it's an email using proper email format validation
     const isEmail = isValidEmail(emailOrPhone)
     
@@ -139,9 +139,8 @@ export async function verifyOTP(
 }
 
 export async function getCurrentUser(userId: string): Promise<User | null> {
-  const supabase = createClient()
-  
   try {
+    const supabase = createClient()
     const { data: { user }, error } = await supabase.auth.getUser()
     
     if (error || !user || user.id !== userId) {
@@ -156,9 +155,8 @@ export async function getCurrentUser(userId: string): Promise<User | null> {
 
 // Development helper to switch roles
 export async function devSwitchRole(userId: string, role: User['role']): Promise<User | null> {
-  const supabase = createClient()
-  
   try {
+    const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user || user.id !== userId) {
@@ -191,52 +189,84 @@ export async function devSwitchRole(userId: string, role: User['role']): Promise
 
 // New function to get current session
 export async function getSession() {
-  const supabase = createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  return session
+  try {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    return session
+  } catch {
+    return null
+  }
 }
 
 // New function to sign out
 export async function signOut() {
-  const supabase = createClient()
-  const { error } = await supabase.auth.signOut()
-  return { success: !error, error: error?.message }
+  try {
+    const supabase = createClient()
+    const { error } = await supabase.auth.signOut()
+    return { success: !error, error: error?.message }
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to sign out' 
+    }
+  }
 }
 
 // Social sign-in functions
 export async function signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
-  const supabase = createClient()
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${origin}/auth/callback`,
-    },
-  })
-  return { success: !error, error: error?.message }
+  try {
+    const supabase = createClient()
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${origin}/auth/callback`,
+      },
+    })
+    return { success: !error, error: error?.message }
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to sign in with Google' 
+    }
+  }
 }
 
 export async function signInWithFacebook(): Promise<{ success: boolean; error?: string }> {
-  const supabase = createClient()
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'facebook',
-    options: {
-      redirectTo: `${origin}/auth/callback`,
-      scopes: 'email', // Explicitly request email permission
-    },
-  })
-  return { success: !error, error: error?.message }
+  try {
+    const supabase = createClient()
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'facebook',
+      options: {
+        redirectTo: `${origin}/auth/callback`,
+        scopes: 'email', // Explicitly request email permission
+      },
+    })
+    return { success: !error, error: error?.message }
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to sign in with Facebook' 
+    }
+  }
 }
 
 export async function signInWithApple(): Promise<{ success: boolean; error?: string }> {
-  const supabase = createClient()
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'apple',
-    options: {
-      redirectTo: `${origin}/auth/callback`,
-    },
-  })
-  return { success: !error, error: error?.message }
+  try {
+    const supabase = createClient()
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'apple',
+      options: {
+        redirectTo: `${origin}/auth/callback`,
+      },
+    })
+    return { success: !error, error: error?.message }
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to sign in with Apple' 
+    }
+  }
 }
