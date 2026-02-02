@@ -2,11 +2,19 @@ import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
 import { isSessionVerified, clearCheckout } from '@/lib/stripe/checkout-store';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-01-28.clover',
-});
+function getStripeClient() {
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  return new Stripe(apiKey, {
+    apiVersion: '2026-01-28.clover',
+  });
+}
 
 export async function GET(request: NextRequest) {
+  const stripe = getStripeClient();
   const sessionId = request.nextUrl.searchParams.get('session_id');
   const nonceCookie = request.cookies.get('checkout_nonce')?.value;
   const sessionCookie = request.cookies.get('checkout_session')?.value;
