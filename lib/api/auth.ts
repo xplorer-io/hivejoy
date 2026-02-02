@@ -153,40 +153,6 @@ export async function getCurrentUser(userId: string): Promise<User | null> {
   }
 }
 
-// Development helper to switch roles
-export async function devSwitchRole(userId: string, role: User['role']): Promise<User | null> {
-  try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user || user.id !== userId) {
-      return null
-    }
-    
-    // Update user metadata
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        role,
-      },
-    })
-    
-    if (error) {
-      return null
-    }
-    
-    // Fetch updated user
-    const { data: { user: updatedUser } } = await supabase.auth.getUser()
-    
-    if (!updatedUser) {
-      return null
-    }
-    
-    return mapSupabaseUser(updatedUser)
-  } catch {
-    return null
-  }
-}
-
 // New function to get current session
 export async function getSession() {
   try {

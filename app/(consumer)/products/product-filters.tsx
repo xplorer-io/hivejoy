@@ -1,155 +1,198 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback } from 'react';
+import * as React from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Search, X, SlidersHorizontal } from 'lucide-react';
+
+import { floralSourceOptions, australianRegions } from '@/lib/api';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { floralSourceOptions, australianRegions } from '@/lib/api';
-import { Search, X } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 
-export function ProductFilters() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
+type Mode = 'sheet' | 'sidebar';
 
-    const updateFilter = useCallback(
-        (key: string, value: string | null) => {
-            const params = new URLSearchParams(searchParams.toString());
-            if (value) {
-                params.set(key, value);
-            } else {
-                params.delete(key);
-            }
-            params.delete('page'); // Reset to page 1 on filter change
-            router.push(`/products?${params.toString()}`);
-        },
-        [router, searchParams]
-    );
+export function ProductFilters({ mode = 'sheet' }: { mode?: Mode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const sp = useSearchParams();
 
-    const clearFilters = useCallback(() => {
-        router.push('/products');
-    }, [router]);
+  const ALL = 'all';
 
-    const hasFilters =
-        searchParams.has('search') ||
-        searchParams.has('region') ||
-        searchParams.has('floralSource') ||
-        searchParams.has('minPrice') ||
-        searchParams.has('maxPrice');
+  const hasFilters =
+    sp.has('search') ||
+    sp.has('region') ||
+    sp.has('floralSource') ||
+    sp.has('minPrice') ||
+    sp.has('maxPrice') ||
+    sp.has('sort');
 
-    return (
-        <Card>
-            <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Filters</CardTitle>
-                    {hasFilters && (
-                        <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 gap-1">
-                            <X className="h-3 w-3" />
-                            Clear
-                        </Button>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                {/* Search */}
-                <div className="space-y-2">
-                    <Label>Search</Label>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search honey..."
-                            className="pl-9"
-                            defaultValue={searchParams.get('search') || ''}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                // Debounce search
-                                const timeout = setTimeout(() => {
-                                    updateFilter('search', value || null);
-                                }, 300);
-                                return () => clearTimeout(timeout);
-                            }}
-                        />
-                    </div>
-                </div>
+  const [search, setSearch] = React.useState(sp.get('search') ?? '');
+  const debounceRef = React.useRef<number | null>(null);
 
-                <Separator />
+  React.useEffect(() => {
+    setSearch(sp.get('search') ?? '');
+  }, [sp]);
 
-                {/* Region */}
-                <div className="space-y-2">
-                    <Label>Region</Label>
-                    <Select
-                        value={searchParams.get('region') || ''}
-                        onValueChange={(value) => updateFilter('region', value || null)}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="All regions" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="https://images.pexels.com/photos/5634207/pexels-photo-5634207.jpeg?w=800">All regions</SelectItem>
-                            {australianRegions.map((region) => (
-                                <SelectItem key={region} value={region}>
-                                    {region}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+  const setParam = React.useCallback(
+    (key: string, value: string | null) => {
+      const params = new URLSearchParams(sp.toString());
+      if (value && value.length) params.set(key, value);
+      else params.delete(key);
 
-                {/* Floral Source */}
-                <div className="space-y-2">
-                    <Label>Floral Source</Label>
-                    <Select
-                        value={searchParams.get('floralSource') || ''}
-                        onValueChange={(value) => updateFilter('floralSource', value || null)}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="All types" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="https://images.pexels.com/photos/33260/honey-sweet-syrup-organic.jpg?w=800">All types</SelectItem>
-                            {floralSourceOptions.map((source) => (
-                                <SelectItem key={source} value={source}>
-                                    {source}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+      // always reset page when filters change
+      params.delete('page');
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [router, pathname, sp],
+  );
 
-                <Separator />
+  const clearFilters = React.useCallback(() => {
+    router.push(pathname);
+  }, [router, pathname]);
 
-                {/* Price Range */}
-                <div className="space-y-2">
-                    <Label>Price Range</Label>
-                    <div className="flex gap-2 items-center">
-                        <Input
-                            type="number"
-                            placeholder="Min"
-                            className="w-full"
-                            defaultValue={searchParams.get('minPrice') || ''}
-                            onChange={(e) => updateFilter('minPrice', e.target.value || null)}
-                        />
-                        <span className="text-muted-foreground">-</span>
-                        <Input
-                            type="number"
-                            placeholder="Max"
-                            className="w-full"
-                            defaultValue={searchParams.get('maxPrice') || ''}
-                            onChange={(e) => updateFilter('maxPrice', e.target.value || null)}
-                        />
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
+  const content = (
+    <Card className="rounded-3xl shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-base">Filters</CardTitle>
+        {hasFilters ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 rounded-full px-3 text-xs"
+            onClick={clearFilters}>
+            Clear <X className="ml-1.5 h-3.5 w-3.5" />
+          </Button>
+        ) : null}
+      </CardHeader>
+
+      <CardContent className="space-y-5">
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">Search</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSearch(v);
+
+                if (debounceRef.current)
+                  window.clearTimeout(debounceRef.current);
+                debounceRef.current = window.setTimeout(() => {
+                  setParam('search', v.trim() || null);
+                }, 250);
+              }}
+              placeholder="Floral type, region, producer…"
+              className="h-11 rounded-2xl pl-9"
+            />
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">Region</Label>
+          <Select
+            value={sp.get('region') ?? ALL}
+            onValueChange={(value) =>
+              setParam('region', value === ALL ? null : value)
+            }>
+            <SelectTrigger className="h-11 rounded-2xl">
+              <SelectValue placeholder="All regions" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All regions</SelectItem>
+              {australianRegions.map((region) => (
+                <SelectItem key={region} value={region}>
+                  {region}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">Floral source</Label>
+          <Select
+            value={sp.get('floralSource') ?? ALL}
+            onValueChange={(value) =>
+              setParam('floralSource', value === ALL ? null : value)
+            }>
+            <SelectTrigger className="h-11 rounded-2xl">
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All types</SelectItem>
+              {floralSourceOptions.map((source) => (
+                <SelectItem key={source} value={source}>
+                  {source}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">Price range</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              inputMode="decimal"
+              placeholder="Min"
+              defaultValue={sp.get('minPrice') ?? ''}
+              onBlur={(e) => setParam('minPrice', e.target.value || null)}
+              className="h-11 rounded-2xl"
+            />
+            <Input
+              inputMode="decimal"
+              placeholder="Max"
+              defaultValue={sp.get('maxPrice') ?? ''}
+              onBlur={(e) => setParam('maxPrice', e.target.value || null)}
+              className="h-11 rounded-2xl"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Tip: set one side and leave the other empty.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  if (mode === 'sidebar') return content;
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="outline" className="h-9 rounded-full px-4">
+          <SlidersHorizontal className="mr-2 h-4 w-4" />
+          Filter
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-[360px] p-0">
+        <SheetHeader className="p-4">
+          <SheetTitle>Filter products</SheetTitle>
+        </SheetHeader>
+        <div className="p-4 pt-0">{content}</div>
+      </SheetContent>
+    </Sheet>
+  );
 }
-
