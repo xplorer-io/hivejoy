@@ -4,11 +4,19 @@ import { markSessionVerified } from '@/lib/stripe/checkout-store';
 
 export const runtime = 'nodejs';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-01-28.clover',
-});
+function getStripeClient() {
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  return new Stripe(apiKey, {
+    apiVersion: '2026-01-28.clover',
+  });
+}
 
 export async function POST(request: NextRequest) {
+  const stripe = getStripeClient();
   const signature = request.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
