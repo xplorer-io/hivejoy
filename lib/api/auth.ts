@@ -4,6 +4,15 @@ import { createClient } from '@/lib/supabase/client'
 import type { User } from '@/types'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
+// Validate email format using a proper regex pattern
+function isValidEmail(email: string): boolean {
+  // RFC 5322 compliant email regex (simplified but robust)
+  // Matches: user@domain.com, user.name@domain.co.uk, etc.
+  // Rejects: strings with @ but invalid format, phone numbers with @, etc.
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email.trim())
+}
+
 // Map Supabase user to your User type
 function mapSupabaseUser(supabaseUser: SupabaseUser): User {
   return {
@@ -21,8 +30,8 @@ export async function sendOTP(emailOrPhone: string): Promise<{ success: boolean;
   const supabase = createClient()
   
   try {
-    // Check if it's an email or phone
-    const isEmail = emailOrPhone.includes('@')
+    // Validate if it's an email using proper email format validation
+    const isEmail = isValidEmail(emailOrPhone)
     
     if (isEmail) {
       // Request OTP code (not magic link) by not providing emailRedirectTo
@@ -82,7 +91,8 @@ export async function verifyOTP(
   const supabase = createClient()
   
   try {
-    const isEmail = emailOrPhone.includes('@')
+    // Validate if it's an email using proper email format validation
+    const isEmail = isValidEmail(emailOrPhone)
     
     let result
     if (isEmail) {
@@ -206,13 +216,14 @@ export async function signInWithGoogle(): Promise<{ success: boolean; error?: st
   return { success: !error, error: error?.message }
 }
 
-export async function signInWithGitHub(): Promise<{ success: boolean; error?: string }> {
+export async function signInWithFacebook(): Promise<{ success: boolean; error?: string }> {
   const supabase = createClient()
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'github',
+    provider: 'facebook',
     options: {
       redirectTo: `${origin}/auth/callback`,
+      scopes: 'email', // Explicitly request email permission
     },
   })
   return { success: !error, error: error?.message }

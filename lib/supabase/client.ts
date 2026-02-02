@@ -5,30 +5,31 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Minimal type for mock client to avoid 'any'
 // Includes all methods used in the codebase
+// Method signatures accept parameters to match real Supabase v2 types
 type MockSupabaseClient = {
   auth: {
-    getSession: () => Promise<{ data: { session: null }; error: null }>
-    getUser: () => Promise<{ data: { user: null }; error: null }>
-    onAuthStateChange: () => { data: { subscription: { unsubscribe: () => void } } }
-    signOut: () => Promise<{ error: null }>
-    signInWithOtp: () => Promise<{ error: { message: string } }>
-    verifyOtp: () => Promise<{ data: { user: null }; error: { message: string } }>
-    updateUser: () => Promise<{ error: { message: string } }>
-    signInWithOAuth: () => Promise<{ error: { message: string } }>
+    getSession: (..._args: unknown[]) => Promise<{ data: { session: null }; error: null }>
+    getUser: (..._args: unknown[]) => Promise<{ data: { user: null }; error: null }>
+    onAuthStateChange: (..._args: unknown[]) => { data: { subscription: { unsubscribe: () => void } } }
+    signOut: (..._args: unknown[]) => Promise<{ error: null }>
+    signInWithOtp: (..._args: unknown[]) => Promise<{ error: { message: string } }>
+    verifyOtp: (..._args: unknown[]) => Promise<{ data: { user: null }; error: { message: string } }>
+    updateUser: (..._args: unknown[]) => Promise<{ error: { message: string } }>
+    signInWithOAuth: (..._args: unknown[]) => Promise<{ error: { message: string } }>
   }
 }
 
 function createMockClient(): MockSupabaseClient {
   return {
     auth: {
-      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      signOut: () => Promise.resolve({ error: null }),
-      signInWithOtp: () => Promise.resolve({ error: { message: 'Supabase not configured' } }),
-      verifyOtp: () => Promise.resolve({ data: { user: null }, error: { message: 'Supabase not configured' } }),
-      updateUser: () => Promise.resolve({ error: { message: 'Supabase not configured' } }),
-      signInWithOAuth: () => Promise.resolve({ error: { message: 'Supabase not configured' } }),
+      getSession: (..._args: unknown[]) => Promise.resolve({ data: { session: null }, error: null }),
+      getUser: (..._args: unknown[]) => Promise.resolve({ data: { user: null }, error: null }),
+      onAuthStateChange: (..._args: unknown[]) => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signOut: (..._args: unknown[]) => Promise.resolve({ error: null }),
+      signInWithOtp: (..._args: unknown[]) => Promise.resolve({ error: { message: 'Supabase not configured' } }),
+      verifyOtp: (..._args: unknown[]) => Promise.resolve({ data: { user: null }, error: { message: 'Supabase not configured' } }),
+      updateUser: (..._args: unknown[]) => Promise.resolve({ error: { message: 'Supabase not configured' } }),
+      signInWithOAuth: (..._args: unknown[]) => Promise.resolve({ error: { message: 'Supabase not configured' } }),
     },
   }
 }

@@ -23,6 +23,16 @@ const roleConfig: Record<UserRole, { label: string; icon: typeof User; color: st
 export function DevRoleSwitcher() {
   const { user, devSetRole, logout, isAuthenticated } = useAuthStore();
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      // Log error for debugging, but don't show to user as logout should still clear local state
+      console.error('Logout error:', error);
+      // The logout function in the store will still clear local state even if Supabase signOut fails
+    }
+  };
+
   if (process.env.NODE_ENV === 'production') {
     return null;
   }
@@ -67,7 +77,7 @@ export function DevRoleSwitcher() {
           {isAuthenticated && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => logout()} className="text-destructive cursor-pointer">
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
                 Sign Out
               </DropdownMenuItem>
             </>
