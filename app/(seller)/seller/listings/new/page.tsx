@@ -177,7 +177,7 @@ export default function NewListingPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {variants.map((variant, index) => (
+            {variants.map((variant) => (
               <div
                 key={variant.id}
                 className="grid grid-cols-5 gap-4 p-4 rounded-lg bg-muted/50"
