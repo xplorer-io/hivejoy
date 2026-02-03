@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import { AuthProvider } from './auth-provider';
+import { PostHogProvider } from './posthog-provider';
 import { DevRoleSwitcher } from '@/components/dev/role-switcher';
 
 interface ProvidersProps {
@@ -10,10 +11,12 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <AuthProvider>
-      {children}
-      <DevRoleSwitcher />
-    </AuthProvider>
+    <PostHogProvider>
+      <AuthProvider>
+        {children}
+        <DevRoleSwitcher />
+      </AuthProvider>
+    </PostHogProvider>
   );
 }
 
