@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { sendSellerRegistrationEmail } from '@/lib/sendgrid/email';
 import type {
   ProducerProfile,
   Product,
@@ -680,7 +681,40 @@ export async function createProducer(
     throw new Error(`Failed to create producer: ${error.message}`);
   }
 
-  return mapProducer(data);
+  const producer = mapProducer(data);
+
+  // Send email notification to agent after successful producer creation
+  try {
+    // Get user's email from profiles table
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', producerData.userId)
+      .single();
+
+    const userEmail = profile?.email || '';
+
+    // Send email to agent
+    const agentEmail = process.env.SENDGRID_AGENT_EMAIL || 'adarsha.aryal653@gmail.com';
+    
+    await sendSellerRegistrationEmail(
+      {
+        businessName: producerData.businessName,
+        email: userEmail,
+        abn: producerData.abn,
+        address: producerData.address,
+        bio: producerData.bio,
+        producerId: producer.id,
+        userId: producerData.userId,
+      },
+      agentEmail
+    );
+  } catch (emailError) {
+    // Log error but don't fail the producer creation if email fails
+    console.error('Failed to send seller registration email:', emailError);
+  }
+
+  return producer;
 }
 
 /**
