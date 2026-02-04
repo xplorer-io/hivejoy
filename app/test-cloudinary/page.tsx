@@ -166,11 +166,7 @@ export default function TestCloudinaryPage() {
                 </li>
                 <li>
                   API_KEY:{' '}
-                  {process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY ? (
-                    <span className="text-green-600 dark:text-green-400">✓ Set</span>
-                  ) : (
-                    <span className="text-red-600 dark:text-red-400">✗ Missing</span>
-                  )}
+                  <span className="text-muted-foreground text-xs">(Optional - not used for unsigned uploads)</span>
                 </li>
                 <li>
                   UPLOAD_PRESET:{' '}

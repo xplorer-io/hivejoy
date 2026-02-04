@@ -1,36 +1,37 @@
 import { createProducer } from '@/lib/api/database';
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
+  // Restrict to non-production environments
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { success: false, error: 'This endpoint is not available in production' },
+      { status: 403 }
+    );
+  }
+
   try {
+    // Get authenticated user from session
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Please sign in first.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    const { businessName, bio, profileImage, userId } = body;
+    const { businessName, bio, profileImage } = body;
+    
+    // Use authenticated user's ID, not from request body
+    const userId = user.id;
 
     if (!businessName || !bio || !profileImage) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'User ID is required. Please sign in first, or the system will generate a test UUID.' 
-        },
-        { status: 400 }
-      );
-    }
-
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(userId)) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: `Invalid user ID format. Expected UUID, got: ${userId}. Please sign in to get a valid user ID.` 
-        },
         { status: 400 }
       );
     }

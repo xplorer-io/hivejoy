@@ -324,6 +324,18 @@ export async function getProducts(
   // Get variants for all products
   const productData = Array.isArray(data) ? data : [];
   const productIds = productData.map((p: ProductRowWithRelations) => p.id);
+  
+  // Return early if no products to avoid empty .in() call
+  if (productIds.length === 0) {
+    return {
+      data: [],
+      total: count || 0,
+      page,
+      pageSize,
+      totalPages: Math.ceil((count || 0) / pageSize),
+    };
+  }
+
   const { data: variants } = await supabase
     .from('product_variants')
     .select('*')
@@ -445,6 +457,12 @@ export async function getFeaturedProducts(): Promise<ProductWithDetails[]> {
 
   const productData = Array.isArray(data) ? data : [];
   const productIds = productData.map((p: ProductRowWithRelations) => p.id);
+  
+  // Return early if no products to avoid empty .in() call
+  if (productIds.length === 0) {
+    return [];
+  }
+
   const { data: variants } = await supabase
     .from('product_variants')
     .select('*')
@@ -487,6 +505,12 @@ export async function getProductsByProducer(producerId: string): Promise<Product
 
   const productData = Array.isArray(data) ? data : [];
   const productIds = productData.map((p: ProductRow) => p.id);
+  
+  // Return early if no products to avoid empty .in() call
+  if (productIds.length === 0) {
+    return [];
+  }
+
   const { data: variants } = await supabase
     .from('product_variants')
     .select('*')
@@ -526,6 +550,12 @@ export async function searchProducts(query: string): Promise<ProductWithDetails[
 
   const productData = Array.isArray(data) ? data : [];
   const productIds = productData.map((p: ProductRowWithRelations) => p.id);
+  
+  // Return early if no products to avoid empty .in() call
+  if (productIds.length === 0) {
+    return [];
+  }
+
   const { data: variants } = await supabase
     .from('product_variants')
     .select('*')

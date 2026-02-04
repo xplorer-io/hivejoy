@@ -28,9 +28,25 @@ export async function uploadImage(
   }
 ): Promise<UploadResult> {
   try {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    if (!cloudName) {
+      return {
+        success: false,
+        error: 'Cloudinary cloud name is not configured',
+      };
+    }
+
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+    if (!uploadPreset) {
+      return {
+        success: false,
+        error: 'Cloudinary upload preset is not configured',
+      };
+    }
+
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+    formData.append('upload_preset', uploadPreset);
     formData.append('folder', `hivejoy/${folder}`);
 
     if (options?.transformation) {
@@ -39,14 +55,6 @@ export async function uploadImage(
 
     if (options?.publicId) {
       formData.append('public_id', options.publicId);
-    }
-
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    if (!cloudName) {
-      return {
-        success: false,
-        error: 'Cloudinary cloud name is not configured',
-      };
     }
 
     const response = await fetch(

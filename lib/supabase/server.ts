@@ -31,6 +31,7 @@ type MockQueryBuilder = {
   limit: (..._args: unknown[]) => MockQueryBuilder
   range: (..._args: unknown[]) => MockQueryBuilder
   single: () => Promise<MockQueryResponse>
+  maybeSingle: () => Promise<MockQueryResponse>
   then: (onResolve?: (value: MockQueryResponse) => unknown) => Promise<MockQueryResponse>
 }
 
@@ -71,6 +72,8 @@ function createMockQueryBuilder(): MockQueryBuilder {
     limit: () => builder,
     range: () => builder,
     single: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' }, count: null }),
+    maybeSingle: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' }, count: null }),
+    // biome-ignore lint/suspicious/noThenProperty: Intentional thenable mock for Supabase query builder compatibility
     then: (onResolve) => {
       const result: MockQueryResponse = { data: [], error: { message: 'Supabase not configured' }, count: 0 };
       if (onResolve) {

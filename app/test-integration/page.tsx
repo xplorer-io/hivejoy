@@ -58,6 +58,12 @@ export default function TestIntegrationPage() {
       return;
     }
 
+    // Validate authentication first before uploading
+    if (!user?.id) {
+      setError('Please sign in first. The producer must be linked to a valid user account.');
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setSuccess(false);
@@ -72,12 +78,6 @@ export default function TestIntegrationPage() {
       }
 
       // Step 2: Save to Supabase with Cloudinary URL
-      // User must be logged in to create a producer (user_id must exist in auth.users)
-      if (!user?.id) {
-        setError('Please sign in first. The producer must be linked to a valid user account.');
-        return;
-      }
-
       const userId = user.id;
 
       const response = await fetch('/api/test/create-producer', {
