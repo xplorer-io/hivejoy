@@ -11,7 +11,7 @@ export default function TestSendGridPage() {
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<{ recipient?: string } | null>(null);
 
   // Form data
   const [businessName, setBusinessName] = useState('Test Honey Farm');
@@ -79,7 +79,7 @@ export default function TestSendGridPage() {
           <CardHeader>
             <CardTitle>🧪 Test SendGrid Email</CardTitle>
             <CardDescription>
-              Test the seller registration email functionality. Fill in the form below and click "Send Test Email".
+              Test the seller registration email functionality. Fill in the form below and click &quot;Send Test Email&quot;.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -254,7 +254,7 @@ export default function TestSendGridPage() {
                     </p>
                     <ol className="text-xs text-yellow-700 dark:text-yellow-300 list-decimal list-inside space-y-1">
                       <li>Go to SendGrid Dashboard → Settings → Sender Authentication</li>
-                      <li>Click "Verify an Address" in the Single Sender Verification section</li>
+                      <li>Click &quot;Verify an Address&quot; in the Single Sender Verification section</li>
                       <li>Enter your email and complete the verification</li>
                       <li>Check your email inbox and click the verification link</li>
                       <li>Update SENDGRID_FROM_EMAIL in .env.local with the verified email</li>
@@ -270,7 +270,7 @@ export default function TestSendGridPage() {
                     </p>
                     <ol className="text-xs text-yellow-700 dark:text-yellow-300 list-decimal list-inside space-y-1">
                       <li>Go to SendGrid Dashboard → Settings → API Keys</li>
-                      <li>Create a new API key with "Mail Send" permissions</li>
+                      <li>Create a new API key with &quot;Mail Send&quot; permissions</li>
                       <li>Copy the API key (starts with SG.)</li>
                       <li>Add it to your .env.local: SENDGRID_API_KEY=SG.your_key_here</li>
                       <li>Restart your dev server</li>

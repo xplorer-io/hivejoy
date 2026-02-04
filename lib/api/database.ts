@@ -692,7 +692,7 @@ export async function createProducer(
       .eq('id', producerData.userId)
       .single();
 
-    const userEmail = profile?.email || '';
+    const userEmail = (profile as { email?: string } | null)?.email || '';
 
     // Send email to agent
     const agentEmail = process.env.SENDGRID_AGENT_EMAIL || 'adarsha.aryal653@gmail.com';
