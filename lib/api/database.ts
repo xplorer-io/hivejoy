@@ -354,8 +354,8 @@ export async function getProducts(
     const product = mapProduct(row, variantsByProduct[row.id] || []);
     return {
       ...product,
-      producer: mapProducer(row.producer!),
-      batch: mapBatch(row.batch!),
+      producer: row.producer ? mapProducer(row.producer) : null,
+      batch: row.batch ? mapBatch(row.batch) : null,
     };
   });
 
@@ -364,15 +364,15 @@ export async function getProducts(
 
   if (filters?.region) {
     filtered = filtered.filter((p) =>
-      p.batch.region.toLowerCase().includes(filters.region!.toLowerCase())
+      p.batch?.region.toLowerCase().includes(filters.region!.toLowerCase()) ?? false
     );
   }
 
   if (filters?.floralSource) {
     filtered = filtered.filter((p) =>
-      p.batch.floralSourceTags.some((tag) =>
+      p.batch?.floralSourceTags.some((tag) =>
         tag.toLowerCase().includes(filters.floralSource!.toLowerCase())
-      )
+      ) ?? false
     );
   }
 
@@ -479,8 +479,8 @@ export async function getFeaturedProducts(): Promise<ProductWithDetails[]> {
     const product = mapProduct(row, variantsByProduct[row.id] || []);
     return {
       ...product,
-      producer: mapProducer(row.producer!),
-      batch: mapBatch(row.batch!),
+      producer: row.producer ? mapProducer(row.producer) : null,
+      batch: row.batch ? mapBatch(row.batch) : null,
     };
   });
 }
@@ -572,8 +572,8 @@ export async function searchProducts(query: string): Promise<ProductWithDetails[
     const product = mapProduct(row, variantsByProduct[row.id] || []);
     return {
       ...product,
-      producer: mapProducer(row.producer!),
-      batch: mapBatch(row.batch!),
+      producer: row.producer ? mapProducer(row.producer) : null,
+      batch: row.batch ? mapBatch(row.batch) : null,
     };
   });
 }

@@ -355,6 +355,29 @@ CREATE POLICY "Buyers can create reviews" ON public.reviews
     )
   );
 
+-- Verification Submissions: Producers can view their own submissions
+DROP POLICY IF EXISTS "Producers can view own verification submissions" ON public.verification_submissions;
+CREATE POLICY "Producers can view own verification submissions" ON public.verification_submissions
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.producers p
+      WHERE p.id = verification_submissions.producer_id
+      AND p.user_id = auth.uid()
+    )
+  );
+
+-- Verification Documents: Producers can view their own verification documents
+DROP POLICY IF EXISTS "Producers can view own verification documents" ON public.verification_documents;
+CREATE POLICY "Producers can view own verification documents" ON public.verification_documents
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.verification_submissions vs
+      JOIN public.producers p ON p.id = vs.producer_id
+      WHERE vs.id = verification_documents.submission_id
+      AND p.user_id = auth.uid()
+    )
+  );
+
 -- ==================== AUTOMATIC PROFILE CREATION ====================
 -- Function to automatically create a profile when a user signs up
 CREATE OR REPLACE FUNCTION public.handle_new_user()

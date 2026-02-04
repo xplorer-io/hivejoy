@@ -63,14 +63,23 @@ export async function POST(request: Request) {
     let hasOwnership = !!producer?.id;
 
     if (producer?.id) {
+      // Select photos array and check membership in memory
       const { data: products } = await supabase
         .from('products')
-        .select('id')
+        .select('photos')
         .eq('producer_id', producer.id)
-        .contains('photos', [`%${publicIdToCheck}%`])
-        .limit(1);
+        .limit(100); // Limit to reasonable number for memory check
 
-      hasOwnership = hasOwnership || (Array.isArray(products) && products.length > 0);
+      if (Array.isArray(products)) {
+        for (const product of products) {
+          const photos = Array.isArray(product.photos) ? product.photos : [];
+          // Check if any photo URL contains the publicIdToCheck
+          if (photos.some((photo: string) => photo.includes(publicIdToCheck))) {
+            hasOwnership = true;
+            break;
+          }
+        }
+      }
     }
 
     // Check verification documents
@@ -113,7 +122,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await cloudinary.uploader.destroy(publicId);
+    // Use normalized publicIdToCheck for Cloudinary destroy call
+    const result = await cloudinary.uploader.destroy(publicIdToCheck);
 
     if (result.result === 'ok') {
       return NextResponse.json({ success: true });

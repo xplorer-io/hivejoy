@@ -33,6 +33,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (!product) notFound();
 
   const { producer, batch } = product;
+  
+  // Producer and batch are required for product display
+  if (!producer || !batch) notFound();
+  
   const initials = ProducerInitials(producer.businessName);
 
   return (
