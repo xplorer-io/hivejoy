@@ -23,6 +23,8 @@ jobs:
       - name: Lint project
         run: npm run lint
       - name: Build project
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
         run: npm run build
 
         
