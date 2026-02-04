@@ -293,9 +293,8 @@ export async function getProducts(
     query = query.eq('producer_id', filters.producerId);
   }
 
-  if (filters?.verified) {
-    query = query.eq('producer.badge_level', 'verified');
-  }
+  // Note: verified filter is applied in JavaScript after fetching
+  // because PostgREST doesn't support filtering on embedded relation fields
 
   // Get total count
   const { count } = await supabase
@@ -359,8 +358,14 @@ export async function getProducts(
     };
   });
 
-  // Apply additional filters that require batch data
+  // Apply additional filters that require relation data (batch, producer)
   let filtered = products;
+
+  if (filters?.verified) {
+    filtered = filtered.filter((p) =>
+      p.producer?.badgeLevel === 'verified' || p.producer?.badgeLevel === 'premium'
+    );
+  }
 
   if (filters?.region) {
     filtered = filtered.filter((p) =>

@@ -288,6 +288,18 @@ CREATE POLICY "Producers can create variants for own products" ON public.product
     )
   );
 
+-- Product Variants: Producers can manage (UPDATE/DELETE) variants for their own products
+DROP POLICY IF EXISTS "Producers can manage variants for own products" ON public.product_variants;
+CREATE POLICY "Producers can manage variants for own products" ON public.product_variants
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.products
+      JOIN public.producers ON producers.id = products.producer_id
+      WHERE products.id = product_variants.product_id
+      AND producers.user_id = auth.uid()
+    )
+  );
+
 -- Batches: Producers can create their own batches
 DROP POLICY IF EXISTS "Producers can create own batches" ON public.batches;
 CREATE POLICY "Producers can create own batches" ON public.batches
@@ -375,6 +387,100 @@ CREATE POLICY "Producers can view own verification documents" ON public.verifica
       JOIN public.producers p ON p.id = vs.producer_id
       WHERE vs.id = verification_documents.submission_id
       AND p.user_id = auth.uid()
+    )
+  );
+
+-- ==================== SUPPORT TICKETS RLS POLICIES ====================
+-- Support Tickets: Users can view their own tickets
+DROP POLICY IF EXISTS "Users can view own tickets" ON public.support_tickets;
+CREATE POLICY "Users can view own tickets" ON public.support_tickets
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Support Tickets: Users can create their own tickets
+DROP POLICY IF EXISTS "Users can create tickets" ON public.support_tickets;
+CREATE POLICY "Users can create tickets" ON public.support_tickets
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Support Tickets: Users can update their own tickets
+DROP POLICY IF EXISTS "Users can update own tickets" ON public.support_tickets;
+CREATE POLICY "Users can update own tickets" ON public.support_tickets
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Support Tickets: Admins can view all tickets
+DROP POLICY IF EXISTS "Admins can view all tickets" ON public.support_tickets;
+CREATE POLICY "Admins can view all tickets" ON public.support_tickets
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
+    )
+  );
+
+-- Support Tickets: Admins can update all tickets
+DROP POLICY IF EXISTS "Admins can update all tickets" ON public.support_tickets;
+CREATE POLICY "Admins can update all tickets" ON public.support_tickets
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
+    )
+  );
+
+-- ==================== TICKET MESSAGES RLS POLICIES ====================
+-- Ticket Messages: Users can view messages for their own tickets
+DROP POLICY IF EXISTS "Users can view own ticket messages" ON public.ticket_messages;
+CREATE POLICY "Users can view own ticket messages" ON public.ticket_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.support_tickets
+      WHERE support_tickets.id = ticket_messages.ticket_id
+      AND support_tickets.user_id = auth.uid()
+    )
+  );
+
+-- Ticket Messages: Users can create messages for their own tickets
+DROP POLICY IF EXISTS "Users can create ticket messages" ON public.ticket_messages;
+CREATE POLICY "Users can create ticket messages" ON public.ticket_messages
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.support_tickets
+      WHERE support_tickets.id = ticket_messages.ticket_id
+      AND support_tickets.user_id = auth.uid()
+    )
+  );
+
+-- Ticket Messages: Admins can view all messages
+DROP POLICY IF EXISTS "Admins can view all ticket messages" ON public.ticket_messages;
+CREATE POLICY "Admins can view all ticket messages" ON public.ticket_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
+    )
+  );
+
+-- Ticket Messages: Admins can create messages for any ticket
+DROP POLICY IF EXISTS "Admins can create ticket messages" ON public.ticket_messages;
+CREATE POLICY "Admins can create ticket messages" ON public.ticket_messages
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
+    )
+  );
+
+-- Ticket Messages: Admins can update all messages
+DROP POLICY IF EXISTS "Admins can update ticket messages" ON public.ticket_messages;
+CREATE POLICY "Admins can update ticket messages" ON public.ticket_messages
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
     )
   );
 
