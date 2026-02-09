@@ -243,7 +243,7 @@ export async function getProducerByUserId(userId: string): Promise<ProducerProfi
 
   if (error) {
     // Log the error but don't throw - return null if not found
-    if (error.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
+    if ('code' in error && error.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
       console.error('[getProducerByUserId] Error fetching producer:', error);
     }
     return null;
