@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const sidebarLinks = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/seller-applications', label: 'Seller Applications', icon: ShieldCheck },
   { href: '/admin/verifications', label: 'Verifications', icon: ShieldCheck },
   { href: '/admin/listings', label: 'Listings', icon: Package },
   { href: '/admin/disputes', label: 'Disputes', icon: MessageSquare },

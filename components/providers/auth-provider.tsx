@@ -43,10 +43,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
-    // Get initial session from Supabase (this will override any stale localStorage data)
-    supabase.auth.getSession().then(({ data }: { data: { session: { user: SupabaseUser } | null } }) => {
+    // Get initial session from Supabase and fetch role from database
+    supabase.auth.getSession().then(async ({ data }: { data: { session: { user: SupabaseUser } | null } }) => {
       if (data.session?.user) {
-        setUser(mapSupabaseUser(data.session.user));
+        // Fetch role from database
+        try {
+          const response = await fetch('/api/auth/user');
+          const result = await response.json();
+          if (result.success && result.user) {
+            setUser(result.user);
+          } else {
+            // Fallback to basic user mapping if API fails
+            setUser(mapSupabaseUser(data.session.user));
+          }
+        } catch (error) {
+          console.error('Failed to fetch user role:', error);
+          // Fallback to basic user mapping
+          setUser(mapSupabaseUser(data.session.user));
+        }
       } else {
         // Clear any stale persisted state if no valid Supabase session
         setUser(null);
@@ -57,9 +71,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event: string, session: { user: SupabaseUser } | null) => {
+    } = supabase.auth.onAuthStateChange(async (_event: string, session: { user: SupabaseUser } | null) => {
       if (session?.user) {
-        setUser(mapSupabaseUser(session.user));
+        // Fetch role from database
+        try {
+          const response = await fetch('/api/auth/user');
+          const result = await response.json();
+          if (result.success && result.user) {
+            setUser(result.user);
+          } else {
+            // Fallback to basic user mapping if API fails
+            setUser(mapSupabaseUser(session.user));
+          }
+        } catch (error) {
+          console.error('Failed to fetch user role:', error);
+          // Fallback to basic user mapping
+          setUser(mapSupabaseUser(session.user));
+        }
       } else {
         setUser(null);
       }

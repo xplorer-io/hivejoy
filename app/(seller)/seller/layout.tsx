@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores';
@@ -81,9 +82,92 @@ export default function SellerLayout({
   children: React.ReactNode;
 }) {
   const { user } = useAuthStore();
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // In production, we'd redirect non-producers
-  // For now, just show a warning
+  useEffect(() => {
+    async function checkVerification() {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
+      // If user is already a producer (role === 'producer'), skip verification check
+      // They are already registered and verified
+      if (user.role === 'producer') {
+        setVerificationStatus('approved');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/producers/me');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.producer) {
+            // Check application_status (new field) or verification_status (legacy)
+            const status = data.producer.application_status || data.producer.verificationStatus;
+            setVerificationStatus(status);
+          } else {
+            // No producer profile - needs to register
+            setVerificationStatus('not_registered');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check verification:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    checkVerification();
+  }, [user]);
+
+  // Allow access to registration/apply pages for any authenticated user (consumers can become sellers)
+  const pathname = usePathname();
+  const isRegistrationPage = pathname?.startsWith('/seller/register') || pathname?.startsWith('/seller/apply');
+  
+  // Early return: Always allow access to registration/apply pages
+  if (isRegistrationPage) {
+    return (
+      <div className="flex min-h-screen">
+        {/* Desktop Sidebar - hidden on registration pages */}
+        <aside className="hidden lg:flex w-64 flex-col border-r bg-muted/30">
+          <SidebarContent />
+        </aside>
+
+        {/* Mobile Header */}
+        <div className="flex-1 flex flex-col">
+          <header className="lg:hidden flex items-center justify-between p-4 border-b">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-0">
+                <SidebarContent />
+              </SheetContent>
+            </Sheet>
+
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                <span className="text-lg">🍯</span>
+              </div>
+              <span className="font-bold">Seller Portal</span>
+            </Link>
+
+            <div className="w-10" /> {/* Spacer for centering */}
+          </header>
+
+          {/* Main Content */}
+          <main className="flex-1 p-4 lg:p-8">{children}</main>
+        </div>
+      </div>
+    );
+  }
+  
+  // Check role - block consumers from other seller pages
   if (user && user.role !== 'producer' && user.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -92,15 +176,88 @@ export default function SellerLayout({
           <p className="text-muted-foreground mb-4">
             This area is only accessible to verified producers.
           </p>
-          <p className="text-sm text-muted-foreground mb-6">
-            Use the DEV role switcher in the bottom right to switch to Producer mode.
-          </p>
+          <Link href="/seller/apply">
+            <Button className="mb-2">Become a Seller</Button>
+          </Link>
           <Link href="/">
-            <Button>Return to Store</Button>
+            <Button variant="outline">Return to Store</Button>
           </Link>
         </div>
       </div>
     );
+  }
+
+  // Check verification status - but skip if user is already a producer
+  if (!loading && verificationStatus && user?.role !== 'producer') {
+    if (verificationStatus === 'not_registered' || verificationStatus === 'draft') {
+      // Not registered or draft - redirect to registration
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="text-center max-w-md">
+            <h1 className="text-2xl font-bold mb-2">Seller Verification Required</h1>
+            <p className="text-muted-foreground mb-4">
+              You need to complete your seller registration and get verified before accessing the seller dashboard.
+            </p>
+            <Link href="/seller/register-new">
+              <Button>Complete Registration</Button>
+            </Link>
+          </div>
+        </div>
+      );
+    } else if (verificationStatus === 'pending_review' || verificationStatus === 'submitted' || verificationStatus === 'under_review' || verificationStatus === 'changes_requested') {
+      // Pending review - show status message
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="text-center max-w-md">
+            <h1 className="text-2xl font-bold mb-2">Application Under Review</h1>
+            <p className="text-muted-foreground mb-4">
+              Your seller application is being reviewed by our team. You'll receive an email once your application is approved.
+            </p>
+            <p className="text-sm text-muted-foreground mb-6">
+              Status: {verificationStatus === 'changes_requested' ? 'Changes Requested' : 'Pending Review'}
+            </p>
+            {verificationStatus === 'changes_requested' && (
+              <Link href="/seller/register-new">
+                <Button>Update Application</Button>
+              </Link>
+            )}
+            <Link href="/">
+              <Button variant="outline" className="mt-2">Return to Store</Button>
+            </Link>
+          </div>
+        </div>
+      );
+    } else if (verificationStatus === 'rejected') {
+      // Rejected
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="text-center max-w-md">
+            <h1 className="text-2xl font-bold mb-2">Application Rejected</h1>
+            <p className="text-muted-foreground mb-4">
+              Your seller application was not approved. Please contact support for more information.
+            </p>
+            <Link href="/">
+              <Button>Return to Store</Button>
+            </Link>
+          </div>
+        </div>
+      );
+    } else if (verificationStatus !== 'approved') {
+      // Any other status - not approved
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="text-center max-w-md">
+            <h1 className="text-2xl font-bold mb-2">Verification Required</h1>
+            <p className="text-muted-foreground mb-4">
+              Your seller account needs to be verified before you can access the dashboard.
+            </p>
+            <Link href="/seller/register-new">
+              <Button>Complete Registration</Button>
+            </Link>
+          </div>
+        </div>
+      );
+    }
   }
 
   return (

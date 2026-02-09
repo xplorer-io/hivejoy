@@ -8,6 +8,7 @@ import { ProducerCard } from '@/components/shared/producer-card';
 
 import { Hero } from '@/components/marketing/home/hero';
 import { TrustRow } from '@/components/marketing/home/trust-row';
+import { FoundersStory } from '@/components/marketing/home/founders-story';
 import { GradientCta } from '@/components/marketing/home/gradient-cta';
 
 export default async function HomePage() {
@@ -74,6 +75,8 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      <FoundersStory />
 
       <section className="fluid-container py-14 md:py-20">
         <GradientCta />

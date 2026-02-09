@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { sendSellerRegistrationEmail } from '@/lib/sendgrid/email';
 import type {
+  User,
   ProducerProfile,
   Product,
   ProductWithDetails,
@@ -69,6 +70,33 @@ interface ProductRow {
 interface ProductRowWithRelations extends ProductRow {
   producer?: ProducerRow;
   batch?: BatchRow;
+}
+
+/**
+ * Get user profile from profiles table
+ */
+export async function getUserProfile(userId: string): Promise<User | null> {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return {
+    id: data.id,
+    email: data.email,
+    phone: data.phone || undefined,
+    role: (data.role as User['role']) || 'consumer',
+    status: (data.status as User['status']) || 'active',
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
 }
 
 // Helper to convert database row to ProducerProfile
@@ -202,6 +230,33 @@ export async function getProducer(id: string): Promise<ProducerProfile | null> {
 }
 
 /**
+ * Get producer profile by user ID
+ */
+export async function getProducerByUserId(userId: string): Promise<ProducerProfile | null> {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from('producers')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    // Log the error but don't throw - return null if not found
+    if (error.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
+      console.error('[getProducerByUserId] Error fetching producer:', error);
+    }
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return mapProducer(data);
+}
+
+/**
  * Get featured producers (top 3)
  */
 export async function getFeaturedProducers(): Promise<ProducerProfile[]> {
@@ -250,6 +305,8 @@ export async function getBatch(id: string): Promise<Batch | null> {
 export async function getBatchesByProducer(producerId: string): Promise<Batch[]> {
   const supabase = await createClient();
   
+  console.log('[getBatchesByProducer] Fetching batches for producer_id:', producerId);
+  
   const { data, error } = await supabase
     .from('batches')
     .select('*')
@@ -257,10 +314,11 @@ export async function getBatchesByProducer(producerId: string): Promise<Batch[]>
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching batches:', error);
+    console.error('[getBatchesByProducer] Error fetching batches:', error);
     return [];
   }
 
+  console.log('[getBatchesByProducer] Found', Array.isArray(data) ? data.length : 0, 'batches');
   return Array.isArray(data) ? data.map(mapBatch) : [];
 }
 
@@ -494,15 +552,23 @@ export async function getFeaturedProducts(): Promise<ProductWithDetails[]> {
 /**
  * Get products by producer ID
  */
-export async function getProductsByProducer(producerId: string): Promise<Product[]> {
+export async function getProductsByProducer(
+  producerId: string,
+  includeAllStatuses: boolean = false
+): Promise<Product[]> {
   const supabase = await createClient();
   
-  const { data, error } = await supabase
+  let query = supabase
     .from('products')
     .select('*')
-    .eq('producer_id', producerId)
-    .eq('status', 'approved')
-    .order('created_at', { ascending: false });
+    .eq('producer_id', producerId);
+  
+  // Only filter by approved status if not including all statuses
+  if (!includeAllStatuses) {
+    query = query.eq('status', 'approved');
+  }
+  
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching producer products:', error);
@@ -608,7 +674,7 @@ export async function createProduct(
       title: productData.title,
       description: productData.description,
       photos: productData.photos,
-      status: 'pending_approval',
+      status: 'approved', // Listings go live immediately - no admin approval needed
     })
     .select()
     .single();
@@ -643,6 +709,54 @@ export async function createProduct(
 }
 
 /**
+ * Save seller declarations to archive
+ */
+export async function saveSellerDeclarations(
+  declarationsData: {
+    producerId: string;
+    userId: string;
+    declarations: {
+      declaration1: boolean;
+      declaration2: boolean;
+      declaration3: boolean;
+      declaration4: boolean;
+      declaration5: boolean;
+      declaration6: boolean;
+      declaration7: boolean;
+      declaration8: boolean;
+    };
+    termsAccepted: boolean;
+    ipAddress?: string;
+    userAgent?: string;
+  }
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('seller_declarations')
+    .insert({
+      producer_id: declarationsData.producerId,
+      user_id: declarationsData.userId,
+      declaration_1: declarationsData.declarations.declaration1,
+      declaration_2: declarationsData.declarations.declaration2,
+      declaration_3: declarationsData.declarations.declaration3,
+      declaration_4: declarationsData.declarations.declaration4,
+      declaration_5: declarationsData.declarations.declaration5,
+      declaration_6: declarationsData.declarations.declaration6,
+      declaration_7: declarationsData.declarations.declaration7,
+      declaration_8: declarationsData.declarations.declaration8,
+      terms_accepted: declarationsData.termsAccepted,
+      terms_accepted_at: declarationsData.termsAccepted ? new Date().toISOString() : null,
+      ip_address: declarationsData.ipAddress,
+      user_agent: declarationsData.userAgent,
+    });
+
+  if (error) {
+    throw new Error(`Failed to save seller declarations: ${error.message}`);
+  }
+}
+
+/**
  * Create a new producer profile
  */
 export async function createProducer(
@@ -654,6 +768,19 @@ export async function createProducer(
     bio: string;
     profileImage?: string; // Cloudinary URL
     coverImage?: string; // Cloudinary URL
+    declarations?: {
+      declaration1: boolean;
+      declaration2: boolean;
+      declaration3: boolean;
+      declaration4: boolean;
+      declaration5: boolean;
+      declaration6: boolean;
+      declaration7: boolean;
+      declaration8: boolean;
+    };
+    termsAccepted?: boolean;
+    ipAddress?: string;
+    userAgent?: string;
   }
 ): Promise<ProducerProfile> {
   const supabase = await createClient();
@@ -682,6 +809,23 @@ export async function createProducer(
   }
 
   const producer = mapProducer(data);
+
+  // Save declarations to archive if provided
+  if (producerData.declarations && producerData.termsAccepted) {
+    try {
+      await saveSellerDeclarations({
+        producerId: producer.id,
+        userId: producerData.userId,
+        declarations: producerData.declarations,
+        termsAccepted: producerData.termsAccepted,
+        ipAddress: producerData.ipAddress,
+        userAgent: producerData.userAgent,
+      });
+    } catch (declarationsError) {
+      // Log error but don't fail the producer creation if declarations save fails
+      console.error('Failed to save seller declarations:', declarationsError);
+    }
+  }
 
   // Send email notification to agent after successful producer creation
   try {
@@ -732,6 +876,8 @@ export async function createBatch(
 ): Promise<Batch> {
   const supabase = await createClient();
 
+  console.log('[createBatch] Inserting batch with producer_id:', batchData.producerId);
+  
   const { data, error } = await supabase
     .from('batches')
     .insert({
@@ -747,8 +893,10 @@ export async function createBatch(
     .single();
 
   if (error) {
+    console.error('[createBatch] Error creating batch:', error);
     throw new Error(`Failed to create batch: ${error.message}`);
   }
 
+  console.log('[createBatch] Batch created successfully:', data?.id);
   return mapBatch(data);
 }

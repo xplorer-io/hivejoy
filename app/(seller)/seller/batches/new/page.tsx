@@ -1,15 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createBatch, floralSourceOptions, australianRegions } from '@/lib/api';
+import { floralSourceOptions, australianRegions } from '@/lib/api';
+import { useAuthStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -17,14 +19,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronLeft, X } from 'lucide-react';
+import { ChevronLeft, X, AlertCircle } from 'lucide-react';
 
 export default function NewBatchPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [checkingProducer, setCheckingProducer] = useState(true);
   const [selectedFloralSources, setSelectedFloralSources] = useState<string[]>([]);
   const [region, setRegion] = useState('');
   const [customRegion, setCustomRegion] = useState('');
+
+  // Skip producer profile check - assume verified seller
+  useEffect(() => {
+    if (!user) {
+      setCheckingProducer(false);
+      return;
+    }
+    // Auto-set as ready - producer profile will be auto-created if needed
+    setCheckingProducer(false);
+  }, [user]);
 
   const handleAddFloralSource = (source: string) => {
     if (source && !selectedFloralSources.includes(source)) {
@@ -39,28 +55,107 @@ export default function NewBatchPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+
+    if (!user) {
+      setError('Please sign in to create a batch.');
+      setLoading(false);
+      return;
+    }
 
     const formData = new FormData(e.currentTarget);
     const finalRegion = region === 'custom' ? customRegion : region;
 
+    if (!finalRegion) {
+      setError('Please select a region.');
+      setLoading(false);
+      return;
+    }
+
+    if (selectedFloralSources.length === 0) {
+      setError('Please select at least one floral source.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      await createBatch({
-        producerId: 'producer-1', // Mock producer ID
-        region: `${formData.get('suburb')}, ${finalRegion}`,
-        harvestDate: formData.get('harvestDate') as string,
-        extractionDate: formData.get('extractionDate') as string,
-        floralSourceTags: selectedFloralSources,
-        notes: formData.get('notes') as string || undefined,
-        status: 'active',
+      const response = await fetch('/api/batches/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          region: `${formData.get('suburb')}, ${finalRegion}`,
+          harvestDate: formData.get('harvestDate') as string,
+          extractionDate: formData.get('extractionDate') as string,
+          floralSourceTags: selectedFloralSources,
+          notes: formData.get('notes') as string || undefined,
+        }),
       });
 
+      const data = await response.json();
+
+      console.log('[NewBatchPage] Batch creation response:', data);
+
+      if (!response.ok || !data.success) {
+        const errorMessage = data.error || 'Failed to create batch';
+        
+        // If producer profile not found, redirect to registration
+        if (errorMessage.includes('Producer profile not found')) {
+          router.push('/seller/register');
+          return;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // Show success message
+      setError(null);
+      setSuccess(true);
+      
+      // Wait a bit longer to ensure batch is fully committed to database
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Redirect to batches page
       router.push('/seller/batches');
-    } catch (error) {
-      console.error('Failed to create batch:', error);
+      router.refresh();
+    } catch (err) {
+      console.error('Failed to create batch:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create batch. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (checkingProducer) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Checking producer profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <Card>
+          <CardContent className="pt-6">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Please sign in to create a batch.
+              </AlertDescription>
+            </Alert>
+            <div className="mt-4">
+              <Link href="/auth/producer">
+                <Button className="w-full">Sign In</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -74,10 +169,29 @@ export default function NewBatchPage() {
 
       <h1 className="text-3xl font-bold mb-8">Create New Batch</h1>
 
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {success && (
+        <Alert className="mb-6 border-green-200 bg-green-50 dark:bg-green-900/20">
+          <AlertCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertDescription className="text-green-800 dark:text-green-200">
+            Batch created successfully! Redirecting to batches page...
+          </AlertDescription>
+        </Alert>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Location & Dates</CardTitle>
+            <CardTitle>Harvest Location & Dates</CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              Where was this honey harvested? (This is different from your business address)
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">

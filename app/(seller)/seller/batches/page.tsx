@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getBatchesByProducer } from '@/lib/api';
+// Removed getBatchesByProducer import - using API endpoint instead
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,17 +24,51 @@ export default function BatchesPage() {
   useEffect(() => {
     async function fetchBatches() {
       try {
-        // Use mock producer ID for demo
-        const data = await getBatchesByProducer('producer-1');
-        setBatches(data);
+        console.log('[BatchesPage] Fetching batches...');
+        // Add cache-busting to ensure fresh data
+        const response = await fetch('/api/batches?t=' + Date.now(), {
+          cache: 'no-store',
+        });
+        const data = await response.json();
+        
+        console.log('[BatchesPage] Response:', data);
+        
+        if (data.success && data.batches) {
+          console.log('[BatchesPage] Setting batches:', data.batches.length);
+          setBatches(data.batches);
+        } else {
+          console.log('[BatchesPage] No batches found or error:', data);
+          setBatches([]);
+        }
       } catch (error) {
-        console.error('Failed to fetch batches:', error);
+        console.error('[BatchesPage] Failed to fetch batches:', error);
+        setBatches([]);
       } finally {
         setLoading(false);
       }
     }
 
     fetchBatches();
+    
+    // Refresh batches when page becomes visible (e.g., after navigation)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchBatches();
+      }
+    };
+    
+    // Also listen for focus events (when user switches back to tab)
+    const handleFocus = () => {
+      fetchBatches();
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   return (

@@ -19,6 +19,13 @@ export interface SellerRegistrationEmailData {
   bio: string;
   producerId: string;
   userId: string;
+  // Additional comprehensive fields
+  fullLegalName?: string;
+  sellerType?: string;
+  phoneNumber?: string;
+  beekeeperRegistrationNumber?: string;
+  registeringAuthority?: string;
+  applicationId?: string;
 }
 
 /**
@@ -62,6 +69,12 @@ export async function sendSellerRegistrationEmail(
             <div style="background: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0;">
               <h2 style="margin-top: 0; color: #1f2937; font-size: 18px;">Business Information</h2>
               <table style="width: 100%; border-collapse: collapse;">
+                ${data.fullLegalName ? `
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #6b7280; width: 140px;">Legal Name:</td>
+                  <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(data.fullLegalName)}</td>
+                </tr>
+                ` : ''}
                 <tr>
                   <td style="padding: 8px 0; font-weight: 600; color: #6b7280; width: 140px;">Business Name:</td>
                   <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(data.businessName)}</td>
@@ -70,6 +83,18 @@ export async function sendSellerRegistrationEmail(
                   <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Email:</td>
                   <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(data.email)}</td>
                 </tr>
+                ${data.phoneNumber ? `
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Phone:</td>
+                  <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(data.phoneNumber)}</td>
+                </tr>
+                ` : ''}
+                ${data.sellerType ? `
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Seller Type:</td>
+                  <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(data.sellerType === 'individual' ? 'Individual beekeeper' : 'Registered business')}</td>
+                </tr>
+                ` : ''}
                 ${data.abn ? `
                 <tr>
                   <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">ABN:</td>
@@ -84,6 +109,18 @@ export async function sendSellerRegistrationEmail(
                     ${escapeHtml(data.address.country)}
                   </td>
                 </tr>
+                ${data.beekeeperRegistrationNumber ? `
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Beekeeper Reg #:</td>
+                  <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(data.beekeeperRegistrationNumber)}</td>
+                </tr>
+                ` : ''}
+                ${data.registeringAuthority ? `
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Registering Authority:</td>
+                  <td style="padding: 8px 0; color: #1f2937;">${escapeHtml(data.registeringAuthority)}</td>
+                </tr>
+                ` : ''}
               </table>
             </div>
 
@@ -94,14 +131,14 @@ export async function sendSellerRegistrationEmail(
 
             <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
               <p style="margin: 0; color: #92400e; font-size: 14px;">
-                <strong>Action Required:</strong> Please review this seller registration in the admin dashboard and verify their account.
+                <strong>Action Required:</strong> Please review this seller registration and verify their account. Click the link below to view all application details.
               </p>
             </div>
 
             <div style="margin-top: 30px; text-align: center;">
-              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://hivejoy.netlify.app'}/admin/verifications" 
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/seller-applications/${data.producerId}" 
                  style="display: inline-block; background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-                Review in Admin Dashboard
+                Review Seller Application
               </a>
             </div>
 
