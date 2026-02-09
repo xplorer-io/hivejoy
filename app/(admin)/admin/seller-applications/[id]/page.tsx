@@ -11,13 +11,98 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, XCircle, ChevronLeft, FileText, MapPin, Building, Phone, Mail, User, Calendar, Flower2, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle, ChevronLeft, FileText, MapPin, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 
+interface ProducerData {
+  id: string;
+  business_name: string;
+  full_legal_name?: string;
+  seller_type?: string;
+  abn?: string;
+  trading_name?: string;
+  website?: string;
+  social_profile?: string;
+  primary_email?: string;
+  phone_number?: string;
+  secondary_contact_name?: string;
+  secondary_phone?: string;
+  secondary_email?: string;
+  physical_address_street?: string;
+  physical_address_suburb?: string;
+  physical_address_state?: string;
+  physical_address_postcode?: string;
+  shipping_address_different?: boolean;
+  shipping_address_street?: string;
+  shipping_address_suburb?: string;
+  shipping_address_state?: string;
+  shipping_address_postcode?: string;
+  is_registered_beekeeper?: boolean;
+  beekeeper_registration_number?: string;
+  registering_authority?: string;
+  registering_authority_other?: string;
+  registration_proof_url?: string;
+  apiary_photo_url?: string;
+  declaration_hive_owner?: boolean;
+  declaration_own_hives?: boolean;
+  declaration_no_imported?: boolean;
+  declaration_raw_natural?: boolean;
+  number_of_hives?: number;
+  harvest_regions?: string[];
+  typical_harvest_months?: string[];
+  extraction_method?: string;
+  certifications?: string[];
+  food_safety_compliant?: boolean;
+  food_handling_registration_number?: string;
+  local_council_authority?: string;
+  declaration_compliance_documents?: boolean;
+  bank_account_name?: string;
+  bank_bsb?: string;
+  bank_account_number?: string;
+  gst_registered?: boolean;
+  gst_included_in_pricing?: boolean;
+  bio?: string;
+  profile_image?: string;
+  application_status?: string;
+  verification_status?: string;
+  rejection_reason?: string;
+  street?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+  country?: string;
+  profiles?: {
+    email?: string;
+  };
+}
+
+interface FloralSourceData {
+  id: string;
+  producer_id: string;
+  floral_source_id?: string;
+  other_floral_source?: string;
+  floral_sources?: {
+    id: string;
+    name: string;
+  };
+}
+
+interface ApplicationLogEntry {
+  id: string;
+  producer_id: string;
+  admin_id?: string;
+  action: string;
+  previous_status?: string;
+  new_status?: string;
+  notes?: string;
+  changed_fields?: string[];
+  created_at: string;
+}
+
 interface SellerApplication {
-  producer: any;
-  floralSources: any[];
-  applicationLog: any[];
+  producer: ProducerData;
+  floralSources: FloralSourceData[];
+  applicationLog: ApplicationLogEntry[];
 }
 
 export default function SellerApplicationDetailPage() {
@@ -406,7 +491,7 @@ export default function SellerApplicationDetailPage() {
             <div>
               <Label className="text-muted-foreground mb-2 block">Primary Floral Sources</Label>
               <div className="flex flex-wrap gap-2">
-                {data.floralSources.map((fs: any) => (
+                {data.floralSources.map((fs: FloralSourceData) => (
                   <Badge key={fs.id} variant="secondary">
                     {fs.floral_sources?.name || fs.other_floral_source || 'Unknown'}
                   </Badge>
@@ -629,7 +714,7 @@ export default function SellerApplicationDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.applicationLog.map((log: any, idx: number) => (
+              {data.applicationLog.map((log: ApplicationLogEntry, idx: number) => (
                 <div key={idx} className="text-sm border-l-2 pl-4 py-2">
                   <p className="font-medium">{log.action.replace(/_/g, ' ')}</p>
                   <p className="text-muted-foreground">

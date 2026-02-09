@@ -73,7 +73,7 @@ export async function PATCH(
       .limit(1)
       .maybeSingle();
 
-    if (!producersData || product.producerId !== producersData.id) {
+    if (!producersData || product.producerId !== (producersData as { id: string }).id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. This product does not belong to you.' },
         { status: 403 }
@@ -81,7 +81,7 @@ export async function PATCH(
     }
 
     // Update product
-    const { data: updatedProduct, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from('products')
       .update({
         title: title?.trim(),

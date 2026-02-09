@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, ChevronLeft, ChevronRight, Upload, FileText, CheckCircle2, X } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, CheckCircle2, X } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores';
 import { uploadImage } from '@/lib/cloudinary/upload';
 import { floralSourceOptions } from '@/lib/api';
@@ -87,9 +87,7 @@ export default function SellerRegisterNewPage() {
   const [beekeeperRegNumber, setBeekeeperRegNumber] = useState('');
   const [registeringAuthority, setRegisteringAuthority] = useState('');
   const [registeringAuthorityOther, setRegisteringAuthorityOther] = useState('');
-  const [registrationProofFile, setRegistrationProofFile] = useState<File | null>(null);
   const [registrationProofUrl, setRegistrationProofUrl] = useState('');
-  const [apiaryPhotoFile, setApiaryPhotoFile] = useState<File | null>(null);
   const [apiaryPhotoUrl, setApiaryPhotoUrl] = useState('');
   const [declarationHiveOwner, setDeclarationHiveOwner] = useState(false);
   const [declarationOwnHives, setDeclarationOwnHives] = useState(false);
@@ -121,7 +119,6 @@ export default function SellerRegisterNewPage() {
 
   // Step 8: Public Profile & Final Declarations
   const [bio, setBio] = useState('');
-  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
   const [farmPhotos, setFarmPhotos] = useState<File[]>([]);
   const [farmPhotoUrls, setFarmPhotoUrls] = useState<string[]>([]);
@@ -366,29 +363,6 @@ export default function SellerRegisterNewPage() {
     setHarvestRegions(harvestRegions.filter((r) => r !== region));
   };
 
-  const toggleFloralSource = (id: string) => {
-    if (selectedFloralSources.includes(id)) {
-      setSelectedFloralSources(selectedFloralSources.filter((f) => f !== id));
-    } else {
-      setSelectedFloralSources([...selectedFloralSources, id]);
-    }
-  };
-
-  const toggleHarvestMonth = (month: string) => {
-    if (typicalHarvestMonths.includes(month)) {
-      setTypicalHarvestMonths(typicalHarvestMonths.filter((m) => m !== month));
-    } else {
-      setTypicalHarvestMonths([...typicalHarvestMonths, month]);
-    }
-  };
-
-  const toggleCertification = (cert: string) => {
-    if (certifications.includes(cert)) {
-      setCertifications(certifications.filter((c) => c !== cert));
-    } else {
-      setCertifications([...certifications, cert]);
-    }
-  };
 
   if (!user) {
     return (
@@ -476,7 +450,7 @@ export default function SellerRegisterNewPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="sellerType">Seller Type *</Label>
-                      <Select value={sellerType} onValueChange={(v) => setSellerType(v as any)}>
+                      <Select value={sellerType} onValueChange={(v) => setSellerType(v as 'individual' | 'registered_business' | '')}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select seller type" />
                         </SelectTrigger>
@@ -808,7 +782,6 @@ export default function SellerRegisterNewPage() {
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  setRegistrationProofFile(file);
                                   await handleFileUpload(file, 'registration');
                                 }
                               }}
@@ -832,7 +805,6 @@ export default function SellerRegisterNewPage() {
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  setApiaryPhotoFile(file);
                                   await handleFileUpload(file, 'apiary');
                                 }
                               }}
@@ -1129,7 +1101,7 @@ export default function SellerRegisterNewPage() {
                   <Alert className="mb-4">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      This information can be provided now or after approval. It's required before you can receive payouts.
+                      This information can be provided now or after approval. It&apos;s required before you can receive payouts.
                     </AlertDescription>
                   </Alert>
                   <div className="space-y-4">
@@ -1224,7 +1196,6 @@ export default function SellerRegisterNewPage() {
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            setProfilePhotoFile(file);
                             await handleFileUpload(file, 'profile');
                           }
                         }}

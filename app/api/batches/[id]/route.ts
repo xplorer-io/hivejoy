@@ -37,14 +37,14 @@ export async function GET(
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (!producersData || producersData.length === 0) {
+    if (!producersData || (producersData as { id: string }[]).length === 0) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 403 }
       );
     }
 
-    const producerIds = producersData.map(p => p.id);
+    const producerIds = (producersData as { id: string }[]).map(p => p.id);
     if (!producerIds.includes(batch.producerId)) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. This batch does not belong to you.' },
@@ -102,14 +102,14 @@ export async function PATCH(
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (!producersData || producersData.length === 0) {
+    if (!producersData || (producersData as { id: string }[]).length === 0) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 403 }
       );
     }
 
-    const producerIds = producersData.map(p => p.id);
+    const producerIds = (producersData as { id: string }[]).map(p => p.id);
     if (!producerIds.includes(batch.producerId)) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. This batch does not belong to you.' },
@@ -118,7 +118,7 @@ export async function PATCH(
     }
 
     // Update batch
-    const updateData: any = {
+    const updateData: Record<string, string | string[] | null | undefined> = {
       updated_at: new Date().toISOString(),
     };
 

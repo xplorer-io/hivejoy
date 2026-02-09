@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateTime } from 'luxon';
-import { FileText, ArrowRight, CheckCircle, Clock } from 'lucide-react';
+import { ArrowRight, CheckCircle } from 'lucide-react';
 
 interface SellerApplication {
   id: string;

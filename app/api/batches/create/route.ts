@@ -23,17 +23,17 @@ export async function POST(request: Request) {
 
     if (!producer) {
       // Auto-create a minimal producer profile for verified sellers (temporary for development)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', user.id)
-        .single();
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('email')
+              .eq('id', user.id)
+              .single();
 
-      const { data: newProducer, error: createError } = await supabase
-        .from('producers')
-        .insert({
-          user_id: user.id,
-          business_name: profile?.email?.split('@')[0] || 'Seller',
+            const { data: newProducer, error: createError } = await supabase
+              .from('producers')
+              .insert({
+                user_id: user.id,
+                business_name: (profile as { email?: string })?.email?.split('@')[0] || 'Seller',
           street: 'TBD',
           suburb: 'TBD',
           state: 'TBD',

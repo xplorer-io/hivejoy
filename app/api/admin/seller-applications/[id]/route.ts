@@ -27,7 +27,7 @@ export async function GET(
       .eq('id', user.id)
       .single();
 
-    if (!profile || profile.role !== 'admin') {
+    if (!profile || (profile as { role?: string }).role !== 'admin') {
       return NextResponse.json(
         { success: false, error: 'Admin access required' },
         { status: 403 }
@@ -122,7 +122,7 @@ export async function PATCH(
       .eq('id', user.id)
       .single();
 
-    if (!profile || profile.role !== 'admin') {
+    if (!profile || (profile as { role?: string }).role !== 'admin') {
       return NextResponse.json(
         { success: false, error: 'Admin access required' },
         { status: 403 }
@@ -154,9 +154,9 @@ export async function PATCH(
       );
     }
 
-    const previousStatus = currentProducer.application_status;
+    const previousStatus = (currentProducer as { application_status?: string }).application_status;
     let newStatus: string;
-    let updateData: any = {};
+    let updateData: Record<string, string | boolean | string[] | null | undefined> = {};
 
     if (action === 'approve') {
       newStatus = 'approved';
@@ -221,11 +221,11 @@ export async function PATCH(
         .eq('id', id)
         .single();
 
-      if (producerData) {
+      if (producerData && (producerData as { user_id?: string }).user_id) {
         await supabase
           .from('profiles')
           .update({ role: 'producer' })
-          .eq('id', producerData.user_id);
+          .eq('id', (producerData as { user_id: string }).user_id);
       }
     }
 

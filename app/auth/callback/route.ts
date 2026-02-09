@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   if (code) {
     try {
       const supabase = await createClient()
-      const { data: { user }, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
       
       if (exchangeError) {
         console.error('Failed to exchange code for session:', exchangeError)
@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
       }
 
       // If user is authenticated, fetch role and redirect accordingly
+      const user = data?.user || data?.session?.user
       if (user) {
         const profile = await getUserProfile(user.id)
         if (profile) {

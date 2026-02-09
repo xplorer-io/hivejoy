@@ -211,7 +211,7 @@ export default function SellerLayout({
           <div className="text-center max-w-md">
             <h1 className="text-2xl font-bold mb-2">Application Under Review</h1>
             <p className="text-muted-foreground mb-4">
-              Your seller application is being reviewed by our team. You'll receive an email once your application is approved.
+              Your seller application is being reviewed by our team. You&apos;ll receive an email once your application is approved.
             </p>
             <p className="text-sm text-muted-foreground mb-6">
               Status: {verificationStatus === 'changes_requested' ? 'Changes Requested' : 'Pending Review'}

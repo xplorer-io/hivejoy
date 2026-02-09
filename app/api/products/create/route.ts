@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createProduct, getProducerByUserId } from '@/lib/api/database';
+import { createProduct } from '@/lib/api/database';
 
 /**
  * API route to create a new product listing
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
         .from('producers')
         .insert({
           user_id: user.id,
-          business_name: profile?.email?.split('@')[0] || 'Seller',
+          business_name: (profile as { email?: string })?.email?.split('@')[0] || 'Seller',
           street: 'TBD',
           suburb: 'TBD',
           state: 'TBD',

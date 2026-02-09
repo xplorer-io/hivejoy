@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getBatchesByProducer, getProducerByUserId } from '@/lib/api/database';
+// Removed unused imports
 
 /**
  * API route to get batches for the authenticated producer
@@ -34,7 +34,7 @@ export async function GET() {
       });
     }
     
-    if (!producersData || producersData.length === 0) {
+    if (!producersData || (producersData as unknown[]).length === 0) {
       console.log('[GET /api/batches] No producers found for user:', user.id);
       return NextResponse.json({
         success: true,
@@ -42,7 +42,7 @@ export async function GET() {
       });
     }
     
-    const producerIds = producersData.map(p => p.id);
+    const producerIds = (producersData as { id: string }[]).map((p: { id: string }) => p.id);
     console.log('[GET /api/batches] Found', producerIds.length, 'producers:', producerIds);
     
     // Step 2: Fetch batches for ALL of this user's producers
@@ -61,7 +61,18 @@ export async function GET() {
     }
     
     // Map batches to expected format
-    const batches = (batchesData || []).map((b: any) => ({
+    const batches = Array.isArray(batchesData) ? batchesData.map((b: {
+      id: string;
+      producer_id: string;
+      region: string;
+      harvest_date: string;
+      extraction_date: string;
+      floral_source_tags: string[];
+      notes?: string | null;
+      status: string;
+      created_at: string;
+      updated_at: string;
+    }) => ({
       id: b.id,
       producerId: b.producer_id,
       region: b.region,
@@ -72,7 +83,7 @@ export async function GET() {
       status: b.status,
       createdAt: b.created_at,
       updatedAt: b.updated_at,
-    }));
+    })) : [];
     
     console.log('[GET /api/batches] Found batches:', batches.length);
     

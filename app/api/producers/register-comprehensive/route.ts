@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
     // Create producer record with all fields
     // Build insert object dynamically to handle missing columns gracefully
-    const producerData: any = {
+    const producerData: Record<string, string | boolean | number | string[] | null | undefined> = {
       user_id: user.id,
       business_name: body.businessName.trim(),
       abn: body.abn?.trim() || null,

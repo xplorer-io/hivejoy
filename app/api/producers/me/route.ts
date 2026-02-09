@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getProducerByUserId } from '@/lib/api/database';
 
 /**
  * Get the current user's producer profile

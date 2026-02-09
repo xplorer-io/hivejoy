@@ -30,17 +30,29 @@ export async function GET() {
       .limit(10);
 
     // Get batches for this user's producers
-    let userBatches: any[] = [];
-    if (producers && producers.length > 0) {
-      const producerIds = producers.map(p => p.id);
+    interface BatchData {
+      id: string;
+      producer_id: string;
+      region: string;
+      harvest_date: string;
+      extraction_date: string;
+      floral_source_tags: string[];
+      notes?: string | null;
+      status: string;
+      created_at: string;
+      updated_at: string;
+    }
+    let userBatches: BatchData[] = [];
+    if (Array.isArray(producers) && producers.length > 0) {
+      const producerIds = (producers as { id: string }[]).map(p => p.id);
       const { data: batchesForUser, error: userBatchesError } = await supabase
         .from('batches')
         .select('*')
         .in('producer_id', producerIds)
         .order('created_at', { ascending: false });
 
-      if (!userBatchesError && batchesForUser) {
-        userBatches = batchesForUser;
+      if (!userBatchesError && Array.isArray(batchesForUser)) {
+        userBatches = batchesForUser.map((b: BatchData) => b);
       }
     }
 
@@ -56,7 +68,7 @@ export async function GET() {
         allBatches: allBatches || [],
         batchesError: batchesError?.message,
         userBatches: userBatches,
-        producerIds: producers?.map(p => p.id) || [],
+        producerIds: Array.isArray(producers) ? producers.map(p => p.id) : [],
       },
     });
   } catch (error) {
