@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       }
 
       // If user is authenticated, fetch role and redirect accordingly
-      const user = data?.session?.user || (data as { user?: any })?.user
+      const user = data?.session?.user || (data as { user?: { id: string } })?.user
       if (user) {
         const profile = await getUserProfile(user.id)
         if (profile) {
