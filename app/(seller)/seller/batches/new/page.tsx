@@ -1,25 +1,25 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { floralSourceOptions, australianRegions } from '@/lib/api/mock-data';
-import { useAuthStore } from '@/lib/stores';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { floralSourceOptions, australianRegions } from "@/lib/api/mock-data";
+import { useAuthStore } from "@/lib/stores";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { ChevronLeft, X, AlertCircle } from 'lucide-react';
+} from "@/components/ui/select";
+import { ChevronLeft, X, AlertCircle } from "lucide-react";
 
 export default function NewBatchPage() {
   const router = useRouter();
@@ -28,9 +28,11 @@ export default function NewBatchPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [checkingProducer, setCheckingProducer] = useState(true);
-  const [selectedFloralSources, setSelectedFloralSources] = useState<string[]>([]);
-  const [region, setRegion] = useState('');
-  const [customRegion, setCustomRegion] = useState('');
+  const [selectedFloralSources, setSelectedFloralSources] = useState<string[]>(
+    [],
+  );
+  const [region, setRegion] = useState("");
+  const [customRegion, setCustomRegion] = useState("");
 
   // Skip producer profile check - assume verified seller
   useEffect(() => {
@@ -58,68 +60,70 @@ export default function NewBatchPage() {
     setError(null);
 
     if (!user) {
-      setError('Please sign in to create a batch.');
+      setError("Please sign in to create a batch.");
       setLoading(false);
       return;
     }
 
     const formData = new FormData(e.currentTarget);
-    const finalRegion = region === 'custom' ? customRegion : region;
+    const finalRegion = region === "custom" ? customRegion : region;
 
     if (!finalRegion) {
-      setError('Please select a region.');
+      setError("Please select a region.");
       setLoading(false);
       return;
     }
 
     if (selectedFloralSources.length === 0) {
-      setError('Please select at least one floral source.');
+      setError("Please select at least one floral source.");
       setLoading(false);
       return;
     }
 
     try {
-      const response = await fetch('/api/batches/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          region: `${formData.get('suburb')}, ${finalRegion}`,
-          harvestDate: formData.get('harvestDate') as string,
-          extractionDate: formData.get('extractionDate') as string,
-          floralSourceTags: selectedFloralSources,
-          notes: formData.get('notes') as string || undefined,
-        }),
+      await createBatch({
+        producerId: "00000000-0000-0000-0002-000000000001", // Mock producer ID
+        region: `${formData.get("suburb")}, ${finalRegion}`,
+        harvestDate: formData.get("harvestDate") as string,
+        extractionDate: formData.get("extractionDate") as string,
+        floralSourceTags: selectedFloralSources,
+        notes: (formData.get("notes") as string) || undefined,
+        status: "active",
       });
 
       const data = await response.json();
 
-      console.log('[NewBatchPage] Batch creation response:', data);
+      console.log("[NewBatchPage] Batch creation response:", data);
 
       if (!response.ok || !data.success) {
-        const errorMessage = data.error || 'Failed to create batch';
-        
+        const errorMessage = data.error || "Failed to create batch";
+
         // If producer profile not found, redirect to registration
-        if (errorMessage.includes('Producer profile not found')) {
-          router.push('/seller/register');
+        if (errorMessage.includes("Producer profile not found")) {
+          router.push("/seller/register");
           return;
         }
-        
+
         throw new Error(errorMessage);
       }
 
       // Show success message
       setError(null);
       setSuccess(true);
-      
+
       // Wait a bit longer to ensure batch is fully committed to database
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
       // Redirect to batches page
-      router.push('/seller/batches');
+      router.push("/seller/batches");
       router.refresh();
     } catch (err) {
-      console.error('Failed to create batch:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create batch. Please try again.');
+      console.error("Failed to create batch:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to create batch. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -190,7 +194,8 @@ export default function NewBatchPage() {
           <CardHeader>
             <CardTitle>Harvest Location & Dates</CardTitle>
             <p className="text-sm text-muted-foreground mt-2">
-              Where was this honey harvested? (This is different from your business address)
+              Where was this honey harvested? (This is different from your
+              business address)
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -222,7 +227,7 @@ export default function NewBatchPage() {
               </div>
             </div>
 
-            {region === 'custom' && (
+            {region === "custom" && (
               <div className="space-y-2">
                 <Label htmlFor="customRegion">Custom Region</Label>
                 <Input
@@ -317,8 +322,11 @@ export default function NewBatchPage() {
         </Card>
 
         <div className="flex gap-4">
-          <Button type="submit" disabled={loading || selectedFloralSources.length === 0}>
-            {loading ? 'Creating...' : 'Create Batch'}
+          <Button
+            type="submit"
+            disabled={loading || selectedFloralSources.length === 0}
+          >
+            {loading ? "Creating..." : "Create Batch"}
           </Button>
           <Link href="/seller/batches">
             <Button type="button" variant="outline">
@@ -330,4 +338,3 @@ export default function NewBatchPage() {
     </div>
   );
 }
-

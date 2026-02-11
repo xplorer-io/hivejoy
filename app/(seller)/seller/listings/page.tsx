@@ -1,31 +1,31 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
 // Removed getProductsByProducer import - using API endpoint instead
-import { useAuthStore } from '@/lib/stores';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import type { Product } from '@/types';
-import { Plus, Package, Edit } from 'lucide-react';
+import { useAuthStore } from "@/lib/stores";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Product } from "@/types";
+import { Plus, Package, Edit } from "lucide-react";
 
-const statusColors: Record<Product['status'], string> = {
-  draft: 'bg-gray-100 text-gray-800',
-  pending_approval: 'bg-yellow-100 text-yellow-800',
-  approved: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-  archived: 'bg-gray-100 text-gray-800',
+const statusColors: Record<Product["status"], string> = {
+  draft: "bg-gray-100 text-gray-800",
+  pending_approval: "bg-yellow-100 text-yellow-800",
+  approved: "bg-green-100 text-green-800",
+  rejected: "bg-red-100 text-red-800",
+  archived: "bg-gray-100 text-gray-800",
 };
 
-const statusLabels: Record<Product['status'], string> = {
-  draft: 'Draft',
-  pending_approval: 'Pending',
-  approved: 'Live',
-  rejected: 'Rejected',
-  archived: 'Archived',
+const statusLabels: Record<Product["status"], string> = {
+  draft: "Draft",
+  pending_approval: "Pending",
+  approved: "Live",
+  rejected: "Rejected",
+  archived: "Archived",
 };
 
 export default function ListingsPage() {
@@ -41,35 +41,13 @@ export default function ListingsPage() {
       }
 
       try {
-        // Get producer profile
-        const producerResponse = await fetch('/api/producers/me');
-        
-        if (!producerResponse.ok) {
-          // No producer found - that's okay, just show empty list
-          setProducts([]);
-          setLoading(false);
-          return;
-        }
-        
-        const producerData = await producerResponse.json();
-
-        if (!producerData.success || !producerData.producer) {
-          setProducts([]);
-          setLoading(false);
-          return;
-        }
-
-        // Fetch all products for this producer via API
-        const productsResponse = await fetch(`/api/producers/${producerData.producer.id}/products`);
-        const productsData = await productsResponse.json();
-        
-        if (productsData.success && productsData.products) {
-          setProducts(productsData.products);
-        } else {
-          setProducts([]);
-        }
+        // Use mock producer ID for demo
+        const data = await getProductsByProducer(
+          "00000000-0000-0000-0002-000000000001",
+        );
+        setProducts(data);
       } catch (error) {
-        console.error('Failed to fetch products:', error);
+        console.error("Failed to fetch products:", error);
         setProducts([]);
       } finally {
         setLoading(false);
@@ -130,8 +108,13 @@ export default function ListingsPage() {
       ) : (
         <div className="space-y-4">
           {products.map((product) => {
-            const lowestPrice = Math.min(...product.variants.map((v) => v.price));
-            const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
+            const lowestPrice = Math.min(
+              ...product.variants.map((v) => v.price),
+            );
+            const totalStock = product.variants.reduce(
+              (sum, v) => sum + v.stock,
+              0,
+            );
 
             return (
               <Card key={product.id}>
@@ -157,9 +140,12 @@ export default function ListingsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <h3 className="font-semibold line-clamp-1">{product.title}</h3>
+                          <h3 className="font-semibold line-clamp-1">
+                            {product.title}
+                          </h3>
                           <p className="text-sm text-muted-foreground line-clamp-1">
-                            {product.variants.length} variant(s) • {totalStock} in stock
+                            {product.variants.length} variant(s) • {totalStock}{" "}
+                            in stock
                           </p>
                         </div>
                         <Badge className={statusColors[product.status]}>
@@ -168,7 +154,9 @@ export default function ListingsPage() {
                       </div>
 
                       <div className="flex items-center justify-between mt-4">
-                        <p className="font-semibold">From ${lowestPrice.toFixed(2)}</p>
+                        <p className="font-semibold">
+                          From ${lowestPrice.toFixed(2)}
+                        </p>
                         <Link href={`/seller/listings/${product.id}`}>
                           <Button variant="outline" size="sm" className="gap-2">
                             <Edit className="h-3 w-3" />
@@ -187,4 +175,3 @@ export default function ListingsPage() {
     </div>
   );
 }
-

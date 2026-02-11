@@ -3,6 +3,14 @@ import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
 import { mockProducts } from '@/lib/api/mock-data';
 import { registerCheckout } from '@/lib/stripe/checkout-store';
+import { createClient } from '@/lib/supabase/server';
+import {
+  dbCreateOrder,
+  dbUpdatePaymentStripeSession,
+  dbDeleteOrder,
+  ensureUserExists,
+  type CreateOrderInput,
+} from '@/lib/db/orders';
 
 function getStripeClient() {
   const apiKey = process.env.STRIPE_SECRET_KEY;
@@ -35,6 +43,7 @@ interface CheckoutRequest {
     state: string;
     postcode: string;
   };
+  buyerId?: string;
 }
 
 const allowedStates = new Set(['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT']);
@@ -63,6 +72,10 @@ const resolveBaseUrl = () => {
 
   throw new Error('Missing APP_BASE_URL');
 };
+
+function isDbConfigured(): boolean {
+  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -109,6 +122,13 @@ export async function POST(request: NextRequest) {
     const baseUrl = resolveBaseUrl();
     const checkoutNonce = crypto.randomUUID();
 
+    // Resolve products and build line items + group by seller
+    const resolvedItems: {
+      product: (typeof mockProducts)[number];
+      variant: (typeof mockProducts)[number]['variants'][number];
+      quantity: number;
+    }[] = [];
+
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map(
       (item) => {
         const productId = normalizeString(item.productId);
@@ -124,6 +144,8 @@ export async function POST(request: NextRequest) {
         if (!Number.isInteger(quantity) || quantity <= 0 || quantity > variant.stock) {
           throw new Error('Invalid quantity');
         }
+
+        resolvedItems.push({ product, variant, quantity });
 
         return {
           price_data: {
@@ -154,24 +176,145 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card', 'afterpay_clearpay'],
-      line_items: lineItems,
-      customer_email: email,
-      client_reference_id: checkoutNonce,
-      success_url: `${baseUrl}/orders?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/checkout?cancelled=true`,
-      metadata: {
-        checkoutNonce,
-        customerPhone: phone,
-        shippingName: `${firstName} ${lastName}`,
-        shippingAddress: address,
-        shippingSuburb: suburb,
-        shippingState: state,
-        shippingPostcode: postcode,
-      },
-    });
+    // ---------------------------------------------------------------
+    // STEP 1: Create DB order FIRST (so payment row exists for webhook)
+    // ---------------------------------------------------------------
+    let dbOrderId: string | null = null;
+
+    if (isDbConfigured()) {
+      // Group items by seller
+      const sellerMap = new Map<string, CreateOrderInput['subOrders'][number]['items']>();
+
+      for (const { product, variant, quantity } of resolvedItems) {
+        const sellerId = product.producerId;
+        if (!sellerMap.has(sellerId)) {
+          sellerMap.set(sellerId, []);
+        }
+
+        // Calculate GST (10% of price)
+        const gst = Number((variant.price * 0.1).toFixed(2));
+
+        sellerMap.get(sellerId)!.push({
+          productId: product.id,
+          variantId: variant.id,
+          productTitle: product.title,
+          variantSize: variant.size,
+          quantity,
+          unitPrice: variant.price,
+          gst,
+          batchSnapshot: {
+            batchId: product.batchId,
+            region: '', // Will be populated from batch data in production
+            harvestDate: '',
+            floralSources: [],
+          },
+        });
+      }
+
+      const subOrders: CreateOrderInput['subOrders'] = [];
+      const sellerCount = sellerMap.size;
+      const shippingPerSeller = shippingCost / sellerCount;
+
+      for (const [sellerId, sellerItems] of sellerMap.entries()) {
+        const subtotal = sellerItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+        const platformFee = Number((subtotal * 0.10).toFixed(2)); // 10% platform fee
+
+        subOrders.push({
+          sellerId,
+          items: sellerItems,
+          shippingCost: Number(shippingPerSeller.toFixed(2)),
+          platformFee,
+        });
+      }
+
+      // Read the authenticated user's ID from the session
+      let buyerId = body.buyerId || '00000000-0000-0000-0000-000000000001';
+      try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) {
+          buyerId = user.id;
+          // Ensure the user has a row in public.users (Supabase Auth doesn't create one automatically)
+          await ensureUserExists(user);
+        }
+      } catch {
+        // Fall back to placeholder if auth check fails (guest checkout)
+      }
+
+      const dbOrder = await dbCreateOrder({
+        buyerId,
+        shippingAddress: {
+          street: address,
+          suburb,
+          state,
+          postcode,
+          country: 'Australia',
+        },
+        subOrders,
+        // Placeholder -- updated with real session ID after Stripe session creation
+        stripeCheckoutSessionId: `pending_${checkoutNonce}`,
+      });
+
+      dbOrderId = dbOrder.id;
+    }
+
+    // ---------------------------------------------------------------
+    // STEP 2: Create Stripe checkout session
+    // ---------------------------------------------------------------
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card', 'afterpay_clearpay'],
+        line_items: lineItems,
+        customer_email: email,
+        client_reference_id: checkoutNonce,
+        success_url: `${baseUrl}/orders?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/checkout?cancelled=true`,
+        metadata: {
+          checkoutNonce,
+          customerPhone: phone,
+          shippingName: `${firstName} ${lastName}`,
+          shippingAddress: address,
+          shippingSuburb: suburb,
+          shippingState: state,
+          shippingPostcode: postcode,
+        },
+      });
+    } catch (stripeError) {
+      // Clean up DB order if Stripe session creation fails
+      if (dbOrderId) {
+        try {
+          await dbDeleteOrder(dbOrderId);
+        } catch (cleanupError) {
+          console.error('Failed to clean up DB order after Stripe failure:', cleanupError);
+        }
+      }
+      throw stripeError;
+    }
+
+    // ---------------------------------------------------------------
+    // STEP 3: Update payment row with the real Stripe session ID
+    // This is FATAL -- without the real session ID, neither the
+    // webhook nor session verification can find the payment row.
+    // ---------------------------------------------------------------
+    if (dbOrderId) {
+      try {
+        await dbUpdatePaymentStripeSession(dbOrderId, session.id);
+      } catch (err) {
+        console.error('Failed to update payment with Stripe session ID:', err);
+        // Clean up DB order and fail checkout -- user can retry
+        try {
+          await dbDeleteOrder(dbOrderId);
+        } catch (cleanupError) {
+          console.error('Failed to clean up DB order after session ID update failure:', cleanupError);
+        }
+        return NextResponse.json(
+          { error: 'Failed to finalize checkout. Please try again.' },
+          { status: 500 }
+        );
+      }
+    }
 
     registerCheckout(session.id, {
       nonce: checkoutNonce,

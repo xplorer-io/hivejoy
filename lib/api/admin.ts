@@ -6,7 +6,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // Verification Queue
 export async function getVerificationQueue(): Promise<VerificationSubmission[]> {
   await delay(300);
-  return mockVerifications.filter(v => !v.adminDecision);
+  return mockVerifications.filter(v => v.status === 'submitted' || v.status === 'pending');
 }
 
 export async function getVerification(id: string): Promise<{
@@ -36,7 +36,7 @@ export async function approveVerification(
   
   mockVerifications[index] = {
     ...mockVerifications[index],
-    adminDecision: 'approved',
+    status: 'approved',
     adminNotes: notes,
     reviewedBy: adminId,
     reviewedAt: new Date().toISOString(),
@@ -66,7 +66,7 @@ export async function rejectVerification(
   
   mockVerifications[index] = {
     ...mockVerifications[index],
-    adminDecision: 'rejected',
+    status: 'rejected',
     adminNotes: notes,
     reviewedBy: adminId,
     reviewedAt: new Date().toISOString(),
@@ -121,7 +121,7 @@ export async function getAdminStats() {
   return {
     totalProducers: mockProducers.length,
     verifiedProducers: mockProducers.filter(p => p.verificationStatus === 'approved').length,
-    pendingVerifications: mockVerifications.filter(v => !v.adminDecision).length,
+    pendingVerifications: mockVerifications.filter(v => v.status === 'submitted' || v.status === 'pending').length,
     totalProducts: mockProducts.length,
     pendingListings: mockProducts.filter(p => p.status === 'pending_approval').length,
     // Mock GMV and order stats
@@ -131,4 +131,3 @@ export async function getAdminStats() {
     repeatBuyerRate: 0.35,
   };
 }
-

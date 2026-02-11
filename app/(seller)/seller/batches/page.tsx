@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useState } from "react";
+import Link from "next/link";
 // Removed getBatchesByProducer import - using API endpoint instead
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import type { Batch } from '@/types';
-import { DateTime } from 'luxon';
-import { Plus, MapPin, Calendar, Flower2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Batch } from "@/types";
+import { DateTime } from "luxon";
+import { Plus, MapPin, Calendar, Flower2 } from "lucide-react";
 
-const statusColors: Record<Batch['status'], string> = {
-  draft: 'bg-gray-100 text-gray-800',
-  active: 'bg-green-100 text-green-800',
-  archived: 'bg-yellow-100 text-yellow-800',
+const statusColors: Record<Batch["status"], string> = {
+  draft: "bg-gray-100 text-gray-800",
+  active: "bg-green-100 text-green-800",
+  archived: "bg-yellow-100 text-yellow-800",
 };
 
 export default function BatchesPage() {
@@ -24,24 +24,13 @@ export default function BatchesPage() {
   useEffect(() => {
     async function fetchBatches() {
       try {
-        console.log('[BatchesPage] Fetching batches...');
-        // Add cache-busting to ensure fresh data
-        const response = await fetch('/api/batches?t=' + Date.now(), {
-          cache: 'no-store',
-        });
-        const data = await response.json();
-        
-        console.log('[BatchesPage] Response:', data);
-        
-        if (data.success && data.batches) {
-          console.log('[BatchesPage] Setting batches:', data.batches.length);
-          setBatches(data.batches);
-        } else {
-          console.log('[BatchesPage] No batches found or error:', data);
-          setBatches([]);
-        }
+        // Use mock producer ID for demo
+        const data = await getBatchesByProducer(
+          "00000000-0000-0000-0002-000000000001",
+        );
+        setBatches(data);
       } catch (error) {
-        console.error('[BatchesPage] Failed to fetch batches:', error);
+        console.error("[BatchesPage] Failed to fetch batches:", error);
         setBatches([]);
       } finally {
         setLoading(false);
@@ -49,25 +38,25 @@ export default function BatchesPage() {
     }
 
     fetchBatches();
-    
+
     // Refresh batches when page becomes visible (e.g., after navigation)
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         fetchBatches();
       }
     };
-    
+
     // Also listen for focus events (when user switches back to tab)
     const handleFocus = () => {
       fetchBatches();
     };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-    
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
     };
   }, []);
 
@@ -146,14 +135,18 @@ export default function BatchesPage() {
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <span>
-                          Harvested {harvestDate.toFormat('d MMM yyyy')}
+                          Harvested {harvestDate.toFormat("d MMM yyyy")}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <Flower2 className="h-4 w-4 text-muted-foreground" />
                         <div className="flex flex-wrap gap-1">
                           {batch.floralSourceTags.slice(0, 3).map((tag) => (
-                            <Badge key={tag} variant="outline" className="text-xs">
+                            <Badge
+                              key={tag}
+                              variant="outline"
+                              className="text-xs"
+                            >
                               {tag}
                             </Badge>
                           ))}
@@ -175,4 +168,3 @@ export default function BatchesPage() {
     </div>
   );
 }
-

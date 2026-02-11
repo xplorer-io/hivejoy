@@ -59,7 +59,7 @@ export const useAuthStore = create<AuthState>()(
           // Create mock user for development
           set({
             user: {
-              id: 'dev-user',
+              id: '00000000-0000-0000-0000-000000000001',
               email: `dev-${role}@hivejoy.com.au`,
               role,
               status: 'active',

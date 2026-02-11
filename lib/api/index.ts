@@ -27,7 +27,7 @@ export {
   getOrders,
   getOrder,
   createOrder,
-  updateOrderStatus,
+  updateSubOrderStatus,
   getSellerOrderStats,
 } from './orders';
 

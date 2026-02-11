@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useAuthStore } from '@/lib/stores';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useAuthStore } from "@/lib/stores";
 // Removed direct imports - using API endpoints instead
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Package,
   DollarSign,
@@ -15,7 +15,7 @@ import {
   Plus,
   ArrowRight,
   Layers,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface DashboardStats {
   totalOrders: number;
@@ -36,25 +36,16 @@ export default function SellerDashboardPage() {
       if (!user) return;
 
       try {
-        // Fetch batches via API
-        const batchesResponse = await fetch('/api/batches');
-        const batchesResult = await batchesResponse.json();
-        
-        if (batchesResult.success && batchesResult.batches) {
-          setBatchCount(batchesResult.batches.filter((b: { status: string }) => b.status === 'active').length);
-        }
-
-        // TODO: Create API endpoint for order stats
-        // For now, set default stats
-        setStats({
-          totalOrders: 0,
-          pendingOrders: 0,
-          processingOrders: 0,
-          completedOrders: 0,
-          totalRevenue: 0,
-        });
+        // Use mock producer ID for demo
+        const producerId = "00000000-0000-0000-0002-000000000001";
+        const [orderStats, batches] = await Promise.all([
+          getSellerOrderStats(producerId),
+          getBatchesByProducer(producerId),
+        ]);
+        setStats(orderStats);
+        setBatchCount(batches.length);
       } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
+        console.error("Failed to fetch dashboard data:", error);
       } finally {
         setLoading(false);
       }
@@ -68,7 +59,9 @@ export default function SellerDashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Here&apos;s your store overview.</p>
+          <p className="text-muted-foreground">
+            Welcome back! Here&apos;s your store overview.
+          </p>
         </div>
         <div className="flex gap-2">
           <Link href="/seller/batches/new">
@@ -106,7 +99,7 @@ export default function SellerDashboardPage() {
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <p className="text-2xl font-bold mt-2">
-                  ${stats?.totalRevenue.toFixed(2) || '0.00'}
+                  ${stats?.totalRevenue.toFixed(2) || "0.00"}
                 </p>
               </CardContent>
             </Card>
@@ -116,13 +109,17 @@ export default function SellerDashboardPage() {
                   <p className="text-sm text-muted-foreground">Total Orders</p>
                   <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <p className="text-2xl font-bold mt-2">{stats?.totalOrders || 0}</p>
+                <p className="text-2xl font-bold mt-2">
+                  {stats?.totalOrders || 0}
+                </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">Pending Orders</p>
+                  <p className="text-sm text-muted-foreground">
+                    Pending Orders
+                  </p>
                   <Package className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <p className="text-2xl font-bold mt-2">
@@ -133,7 +130,9 @@ export default function SellerDashboardPage() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">Active Batches</p>
+                  <p className="text-sm text-muted-foreground">
+                    Active Batches
+                  </p>
                   <Layers className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <p className="text-2xl font-bold mt-2">{batchCount}</p>
@@ -158,10 +157,10 @@ export default function SellerDashboardPage() {
             ) : stats?.pendingOrders ? (
               <div className="space-y-2">
                 <p className="text-muted-foreground">
-                  You have{' '}
+                  You have{" "}
                   <span className="font-medium text-foreground">
                     {stats.pendingOrders} orders
-                  </span>{' '}
+                  </span>{" "}
                   waiting to be processed.
                 </p>
                 <Link href="/seller/orders">
@@ -172,7 +171,9 @@ export default function SellerDashboardPage() {
                 </Link>
               </div>
             ) : (
-              <p className="text-muted-foreground">No pending orders. Great job!</p>
+              <p className="text-muted-foreground">
+                No pending orders. Great job!
+              </p>
             )}
           </CardContent>
         </Card>
@@ -207,7 +208,8 @@ export default function SellerDashboardPage() {
               </div>
               <h3 className="font-semibold mb-1">Create a Batch</h3>
               <p className="text-sm text-muted-foreground mb-3">
-                Record your honey harvest with region, dates, and floral sources.
+                Record your honey harvest with region, dates, and floral
+                sources.
               </p>
               <Link href="/seller/batches/new">
                 <Button variant="outline" size="sm">
@@ -221,7 +223,8 @@ export default function SellerDashboardPage() {
               </div>
               <h3 className="font-semibold mb-1">Add a Listing</h3>
               <p className="text-sm text-muted-foreground mb-3">
-                Create product listings linked to your batches with photos and pricing.
+                Create product listings linked to your batches with photos and
+                pricing.
               </p>
               <Link href="/seller/listings/new">
                 <Button variant="outline" size="sm">
@@ -249,4 +252,3 @@ export default function SellerDashboardPage() {
     </div>
   );
 }
-
