@@ -16,10 +16,13 @@ export async function GET() {
 
     if (error) {
       // If table doesn't exist, fall back to mock data
-      if (error.message?.includes('Could not find the table') || 
-          error.message?.includes('relation') ||
-          error.code === 'PGRST116') {
-        console.warn('Floral sources table not found, using fallback data:', error.message);
+      const errorMessage = error.message || '';
+      const errorCode = (error && 'code' in error) ? (error as { code: string }).code : null;
+      
+      if (errorMessage.includes('Could not find the table') || 
+          errorMessage.includes('relation') ||
+          errorCode === 'PGRST116') {
+        console.warn('Floral sources table not found, using fallback data:', errorMessage);
         // Convert mock data to expected format
         const fallbackSources = floralSourceOptions.map((name, index) => ({
           id: `fallback-${index}`,
@@ -33,7 +36,7 @@ export async function GET() {
         }));
         return NextResponse.json({ success: true, floralSources: fallbackSources });
       }
-      throw new Error(`Failed to fetch floral sources: ${error.message}`);
+      throw new Error(`Failed to fetch floral sources: ${errorMessage}`);
     }
 
     return NextResponse.json({ success: true, floralSources: data || [] });
