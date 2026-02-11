@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { floralSourceOptions, australianRegions } from '@/lib/api';
+import { floralSourceOptions, australianRegions } from '@/lib/api/mock-data';
 import { useAuthStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

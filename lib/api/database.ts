@@ -1,5 +1,6 @@
+'use server';
+
 import { createClient } from '@/lib/supabase/server';
-import { sendSellerRegistrationEmail } from '@/lib/sendgrid/email';
 import type {
   User,
   ProducerProfile,
@@ -837,21 +838,27 @@ export async function createProducer(
 
     const userEmail = (profile as { email?: string } | null)?.email || '';
 
-    // Send email to agent
-    const agentEmail = process.env.SENDGRID_AGENT_EMAIL || 'adarsha.aryal653@gmail.com';
-    
-    await sendSellerRegistrationEmail(
-      {
-        businessName: producerData.businessName,
-        email: userEmail,
-        abn: producerData.abn,
-        address: producerData.address,
-        bio: producerData.bio,
-        producerId: producer.id,
-        userId: producerData.userId,
-      },
-      agentEmail
-    );
+    // Send email to agent (dynamic import to avoid bundling in client code)
+    try {
+      const agentEmail = process.env.SENDGRID_AGENT_EMAIL || 'adarsha.aryal653@gmail.com';
+      const { sendSellerRegistrationEmail } = await import('@/lib/sendgrid/email');
+      
+      await sendSellerRegistrationEmail(
+        {
+          businessName: producerData.businessName,
+          email: userEmail,
+          abn: producerData.abn,
+          address: producerData.address,
+          bio: producerData.bio,
+          producerId: producer.id,
+          userId: producerData.userId,
+        },
+        agentEmail
+      );
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError);
+      // Don't fail registration if email fails
+    }
   } catch (emailError) {
     // Log error but don't fail the producer creation if email fails
     console.error('Failed to send seller registration email:', emailError);
