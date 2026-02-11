@@ -123,7 +123,24 @@ export async function verifyOTP(
       }
     }
     
-    const user = mapSupabaseUser(result.data.user)
+    // Fetch role from database
+    let user = mapSupabaseUser(result.data.user);
+    if (typeof window !== 'undefined') {
+      try {
+        const profileResponse = await fetch('/api/auth/user', {
+          credentials: 'include',
+        });
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          if (profileData.success && profileData.user) {
+            user = profileData.user; // Use role from database
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user role from database:', error);
+        // Continue with default role if fetch fails
+      }
+    }
     
     return {
       success: true,

@@ -4,8 +4,25 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores';
 import { sendOTP, verifyOTP, signInWithGoogle, signInWithFacebook } from '@/lib/api/auth';
+import type { UserRole } from '@/types';
 
-export function useAuth() {
+/**
+ * Get redirect path based on user role
+ */
+function getRedirectPath(role: UserRole): string {
+  switch (role) {
+    case 'consumer':
+      return '/';
+    case 'producer':
+      return '/seller/dashboard';
+    case 'admin':
+      return '/admin/dashboard';
+    default:
+      return '/';
+  }
+}
+
+export function useAuth(role?: UserRole) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setUser } = useAuthStore();
@@ -52,7 +69,9 @@ export function useAuth() {
       const result = await verifyOTP(email, otp);
       if (result.success && result.user) {
         setUser(result.user);
-        router.push('/');
+        // Redirect based on user's role from database
+        const redirectPath = getRedirectPath(result.user.role);
+        router.push(redirectPath);
       } else {
         setError(result.message);
       }

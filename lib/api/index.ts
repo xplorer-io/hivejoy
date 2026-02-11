@@ -1,11 +1,11 @@
-// Products
+// Products - Use database functions instead of mock data
 export {
   getProducts,
   getProduct,
   getFeaturedProducts,
   getProductsByProducer,
   searchProducts,
-} from './products';
+} from './database';
 
 // Producers
 export {
@@ -17,12 +17,10 @@ export {
 } from './producers';
 
 // Batches
-export {
-  getBatch,
-  getBatchesByProducer,
-  createBatch,
-  updateBatch,
-} from './batches';
+// Note: getBatchesByProducer and createBatch are server-side only
+// Client components should use API endpoints: /api/batches and /api/batches/create
+// Keeping mock versions here for backward compatibility, but prefer API endpoints
+export { getBatch, updateBatch } from './batches';
 
 // Orders
 export {

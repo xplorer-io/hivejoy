@@ -4,8 +4,14 @@ import withPWA from "next-pwa";
 const nextConfig: NextConfig = {
   // Use webpack for PWA compatibility
   turbopack: {},
+  // Mark SendGrid as server-only to prevent client bundling
+  serverExternalPackages: ['@sendgrid/mail', '@sendgrid/helpers'],
   images: {
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',

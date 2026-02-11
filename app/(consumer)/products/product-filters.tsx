@@ -4,7 +4,7 @@ import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, X, SlidersHorizontal } from 'lucide-react';
 
-import { floralSourceOptions, australianRegions } from '@/lib/api';
+import { floralSourceOptions, australianRegions } from '@/lib/api/mock-data';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

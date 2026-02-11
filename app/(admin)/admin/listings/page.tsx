@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { getPendingListings, approveListing, rejectListing } from '@/lib/api';
+import { getPendingListings, approveListing, rejectListing } from '@/lib/api/admin';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

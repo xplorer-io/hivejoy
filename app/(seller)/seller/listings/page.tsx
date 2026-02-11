@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getProductsByProducer } from '@/lib/api';
+// Removed getProductsByProducer import - using API endpoint instead
+import { useAuthStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,24 +29,55 @@ const statusLabels: Record<Product['status'], string> = {
 };
 
 export default function ListingsPage() {
+  const { user } = useAuthStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchProducts() {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        // Use mock producer ID for demo
-        const data = await getProductsByProducer('producer-1');
-        setProducts(data);
+        // Get producer profile
+        const producerResponse = await fetch('/api/producers/me');
+        
+        if (!producerResponse.ok) {
+          // No producer found - that's okay, just show empty list
+          setProducts([]);
+          setLoading(false);
+          return;
+        }
+        
+        const producerData = await producerResponse.json();
+
+        if (!producerData.success || !producerData.producer) {
+          setProducts([]);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch all products for this producer via API
+        const productsResponse = await fetch(`/api/producers/${producerData.producer.id}/products`);
+        const productsData = await productsResponse.json();
+        
+        if (productsData.success && productsData.products) {
+          setProducts(productsData.products);
+        } else {
+          setProducts([]);
+        }
       } catch (error) {
         console.error('Failed to fetch products:', error);
+        setProducts([]);
       } finally {
         setLoading(false);
       }
     }
 
     fetchProducts();
-  }, []);
+  }, [user]);
 
   return (
     <div className="space-y-6">

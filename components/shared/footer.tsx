@@ -70,12 +70,26 @@ export function Footer() {
                   Seller Help
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/seller/policies/payout"
+                  className="hover:text-foreground transition-colors">
+                  Payout Policy
+                </Link>
+              </li>
             </ul>
           </div>
 
           <div>
             <h3 className="font-semibold mb-3">Support</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
+              <li>
+                <Link
+                  href="/about"
+                  className="hover:text-foreground transition-colors">
+                  About Us
+                </Link>
+              </li>
               <li>
                 <Link
                   href="/help"
@@ -103,18 +117,23 @@ export function Footer() {
 
         <Separator className="my-8" />
 
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} Hive Joy. All rights reserved.</p>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4 justify-center">
+            <Link
+              href="/policies/terms"
+              className="hover:text-foreground transition-colors">
+              Terms of Purchase
+            </Link>
+            <Link
+              href="/policies/refund-returns"
+              className="hover:text-foreground transition-colors">
+              Refund & Returns
+            </Link>
             <Link
               href="/privacy"
               className="hover:text-foreground transition-colors">
               Privacy Policy
-            </Link>
-            <Link
-              href="/terms"
-              className="hover:text-foreground transition-colors">
-              Terms of Service
             </Link>
           </div>
         </div>

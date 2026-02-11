@@ -56,6 +56,16 @@ export function Header() {
             className="text-sm font-medium hover:text-primary transition-colors">
             Our Producers
           </Link>
+          <Link
+            href="/seller/apply"
+            className="text-sm font-medium hover:text-primary transition-colors">
+            Become a Seller
+          </Link>
+          <Link
+            href="/about"
+            className="text-sm font-medium hover:text-primary transition-colors">
+            About Us
+          </Link>
         </nav>
 
         {/* Search - Desktop */}
@@ -136,11 +146,35 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Link href="/auth">
-              <Button variant="default" size="sm">
-                Sign In
-              </Button>
-            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="default" size="sm">
+                  Sign In
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Sign In As</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/auth/consumer" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Consumer
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/auth/producer" className="flex items-center gap-2">
+                    <Store className="h-4 w-4" />
+                    Producer
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/auth/admin" className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Admin
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           <Sheet>
@@ -160,6 +194,16 @@ export function Header() {
                   href="/producers"
                   className="text-lg font-medium hover:text-primary">
                   Our Producers
+                </Link>
+                <Link
+                  href="/seller/apply"
+                  className="text-lg font-medium hover:text-primary">
+                  Become a Seller
+                </Link>
+                <Link
+                  href="/about"
+                  className="text-lg font-medium hover:text-primary">
+                  About Us
                 </Link>
                 {user?.role === 'producer' && (
                   <Link

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/stores';
-import { getSellerOrderStats, getBatchesByProducer } from '@/lib/api';
+// Removed direct imports - using API endpoints instead
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,14 +36,23 @@ export default function SellerDashboardPage() {
       if (!user) return;
 
       try {
-        // Use mock producer ID for demo
-        const producerId = 'producer-1';
-        const [orderStats, batches] = await Promise.all([
-          getSellerOrderStats(producerId),
-          getBatchesByProducer(producerId),
-        ]);
-        setStats(orderStats);
-        setBatchCount(batches.length);
+        // Fetch batches via API
+        const batchesResponse = await fetch('/api/batches');
+        const batchesResult = await batchesResponse.json();
+        
+        if (batchesResult.success && batchesResult.batches) {
+          setBatchCount(batchesResult.batches.filter((b: { status: string }) => b.status === 'active').length);
+        }
+
+        // TODO: Create API endpoint for order stats
+        // For now, set default stats
+        setStats({
+          totalOrders: 0,
+          pendingOrders: 0,
+          processingOrders: 0,
+          completedOrders: 0,
+          totalRevenue: 0,
+        });
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {

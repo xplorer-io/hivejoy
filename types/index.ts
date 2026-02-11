@@ -106,8 +106,8 @@ export interface ProductVariant {
 
 // Product with relations for display
 export interface ProductWithDetails extends Product {
-  producer: ProducerProfile;
-  batch: Batch;
+  producer: ProducerProfile | null;
+  batch: Batch | null;
 }
 
 // Order

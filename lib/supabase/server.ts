@@ -4,6 +4,37 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // Minimal type for mock client to avoid 'any'
 // Includes all methods used in the codebase
 // Method signatures accept parameters to match real Supabase v2 types
+type MockQueryResponse<T = unknown> = {
+  data: T | null
+  error: { message: string } | null
+  count?: number | null
+}
+
+type MockQueryBuilder = {
+  select: (..._args: unknown[]) => MockQueryBuilder
+  insert: (..._args: unknown[]) => MockQueryBuilder
+  update: (..._args: unknown[]) => MockQueryBuilder
+  delete: (..._args: unknown[]) => MockQueryBuilder
+  eq: (..._args: unknown[]) => MockQueryBuilder
+  neq: (..._args: unknown[]) => MockQueryBuilder
+  gt: (..._args: unknown[]) => MockQueryBuilder
+  gte: (..._args: unknown[]) => MockQueryBuilder
+  lt: (..._args: unknown[]) => MockQueryBuilder
+  lte: (..._args: unknown[]) => MockQueryBuilder
+  like: (..._args: unknown[]) => MockQueryBuilder
+  ilike: (..._args: unknown[]) => MockQueryBuilder
+  is: (..._args: unknown[]) => MockQueryBuilder
+  in: (..._args: unknown[]) => MockQueryBuilder
+  contains: (..._args: unknown[]) => MockQueryBuilder
+  or: (..._args: unknown[]) => MockQueryBuilder
+  order: (..._args: unknown[]) => MockQueryBuilder
+  limit: (..._args: unknown[]) => MockQueryBuilder
+  range: (..._args: unknown[]) => MockQueryBuilder
+  single: () => Promise<MockQueryResponse>
+  maybeSingle: () => Promise<MockQueryResponse>
+  then: (onResolve?: (value: MockQueryResponse) => unknown) => Promise<MockQueryResponse>
+}
+
 type MockSupabaseClient = {
   auth: {
     getSession: (..._args: unknown[]) => Promise<{ data: { session: null }; error: null }>
@@ -16,6 +47,43 @@ type MockSupabaseClient = {
     updateUser: (..._args: unknown[]) => Promise<{ error: { message: string } }>
     signInWithOAuth: (..._args: unknown[]) => Promise<{ error: { message: string } }>
   }
+  from: (table: string) => MockQueryBuilder
+}
+
+function createMockQueryBuilder(): MockQueryBuilder {
+  const builder: MockQueryBuilder = {
+    select: () => builder,
+    insert: () => builder,
+    update: () => builder,
+    delete: () => builder,
+    eq: () => builder,
+    neq: () => builder,
+    gt: () => builder,
+    gte: () => builder,
+    lt: () => builder,
+    lte: () => builder,
+    like: () => builder,
+    ilike: () => builder,
+    is: () => builder,
+    in: () => builder,
+    contains: () => builder,
+    or: () => builder,
+    order: () => builder,
+    limit: () => builder,
+    range: () => builder,
+    single: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' }, count: null }),
+    maybeSingle: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' }, count: null }),
+    // biome-ignore lint/suspicious/noThenProperty: Intentional thenable mock for Supabase query builder compatibility
+    then: (onResolve) => {
+      const result: MockQueryResponse = { data: [], error: { message: 'Supabase not configured' }, count: 0 };
+      if (onResolve) {
+        const resolved = onResolve(result);
+        return Promise.resolve(typeof resolved === 'object' && resolved !== null && 'data' in resolved ? resolved as MockQueryResponse : result);
+      }
+      return Promise.resolve(result);
+    },
+  };
+  return builder;
 }
 
 function createMockClient(): MockSupabaseClient {
@@ -31,6 +99,7 @@ function createMockClient(): MockSupabaseClient {
       updateUser: (..._args: unknown[]) => Promise.resolve({ error: { message: 'Supabase not configured' } }),
       signInWithOAuth: (..._args: unknown[]) => Promise.resolve({ error: { message: 'Supabase not configured' } }),
     },
+    from: () => createMockQueryBuilder(),
   }
 }
 
