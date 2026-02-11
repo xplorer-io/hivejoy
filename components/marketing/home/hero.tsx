@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -63,13 +64,22 @@ export function Hero() {
             </div>
           </div>
 
-          {/* Right side “balance” panel (keeps hero from feeling left-heavy on wide screens) */}
+          {/* Right side "balance" panel (keeps hero from feeling left-heavy on wide screens) */}
           <div className="hidden lg:col-span-6 lg:block xl:col-span-7">
-            <div className="relative h-[360px] w-full overflow-hidden rounded-3xl border bg-white/40 shadow-sm backdrop-blur dark:bg-white/5">
-              <div className="absolute inset-0 bg-[radial-gradient(60%_50%_at_30%_30%,rgba(245,158,11,0.22),transparent_60%)]" />
-              <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl" />
-              <div className="absolute -bottom-20 left-10 h-72 w-72 rounded-full bg-orange-400/15 blur-3xl" />
-              <div className="absolute inset-0 ring-1 ring-inset ring-border/40" />
+            <div className="relative h-[480px] w-full">
+              {/* Main image */}
+              <div className="absolute inset-0 overflow-hidden rounded-3xl border-2 border-amber-200/40 bg-white/40 shadow-xl dark:border-amber-800/40 dark:bg-white/5">
+                <Image
+                  src="/images/AI_generated_honey.jpg"
+                  alt="Pure Australian honey in jars"
+                  fill
+                  className="object-cover transition-transform duration-700 hover:scale-105"
+                  sizes="(min-width: 1024px) 50vw, 0vw"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-50/20 via-transparent to-orange-50/10 dark:from-amber-950/10" />
+                <div className="absolute inset-0 ring-1 ring-inset ring-border/40" />
+              </div>
             </div>
           </div>
         </div>

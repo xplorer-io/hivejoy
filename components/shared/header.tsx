@@ -56,6 +56,16 @@ export function Header() {
             className="text-sm font-medium hover:text-primary transition-colors">
             Our Producers
           </Link>
+          <Link
+            href="/seller/apply"
+            className="text-sm font-medium hover:text-primary transition-colors">
+            Become a Seller
+          </Link>
+          <Link
+            href="/about"
+            className="text-sm font-medium hover:text-primary transition-colors">
+            About Us
+          </Link>
         </nav>
 
         {/* Search - Desktop */}
@@ -184,6 +194,16 @@ export function Header() {
                   href="/producers"
                   className="text-lg font-medium hover:text-primary">
                   Our Producers
+                </Link>
+                <Link
+                  href="/seller/apply"
+                  className="text-lg font-medium hover:text-primary">
+                  Become a Seller
+                </Link>
+                <Link
+                  href="/about"
+                  className="text-lg font-medium hover:text-primary">
+                  About Us
                 </Link>
                 {user?.role === 'producer' && (
                   <Link

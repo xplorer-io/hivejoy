@@ -104,7 +104,7 @@ function mapProducer(row: ProducerRow): ProducerProfile {
   return {
     id: row.id,
     userId: row.user_id,
-    businessName: row.business_name,
+    businessName: row.business_name || 'Producer',
     abn: row.abn,
     address: {
       street: row.street,
@@ -257,7 +257,7 @@ export async function getProducerByUserId(userId: string): Promise<ProducerProfi
 }
 
 /**
- * Get featured producers (top 3)
+ * Get featured producers (all verified sellers)
  */
 export async function getFeaturedProducers(): Promise<ProducerProfile[]> {
   const supabase = await createClient();
@@ -266,9 +266,8 @@ export async function getFeaturedProducers(): Promise<ProducerProfile[]> {
     .from('producers')
     .select('*')
     .eq('verification_status', 'approved')
-    .eq('badge_level', 'premium')
     .order('created_at', { ascending: false })
-    .limit(3);
+    .limit(12);
 
   if (error) {
     console.error('Error fetching featured producers:', error);

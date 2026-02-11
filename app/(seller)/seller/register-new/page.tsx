@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertCircle, ChevronLeft, ChevronRight, CheckCircle2, X } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores';
 import { uploadImage } from '@/lib/cloudinary/upload';
-import { floralSourceOptions } from '@/lib/api';
+import { floralSourceOptions } from '@/lib/api/mock-data';
 
 interface FloralSource {
   id: string;
@@ -42,7 +42,7 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-type FormStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+type FormStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export default function SellerRegisterNewPage() {
   const router = useRouter();
@@ -53,6 +53,8 @@ export default function SellerRegisterNewPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [floralSources, setFloralSources] = useState<FloralSource[]>([]);
+  const [isVerifiedSeller, setIsVerifiedSeller] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(true);
 
   // Step 1: Identity
   const [fullLegalName, setFullLegalName] = useState('');
@@ -165,7 +167,35 @@ export default function SellerRegisterNewPage() {
     }
   }, [user]);
 
-  const totalSteps = 8;
+  // Check if user is already a verified seller
+  useEffect(() => {
+    async function checkSellerStatus() {
+      if (!user) {
+        setCheckingStatus(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/producers/me');
+        const data = await response.json();
+        
+        if (data.success && data.producer) {
+          const verificationStatus = data.producer.verificationStatus;
+          if (verificationStatus === 'approved') {
+            setIsVerifiedSeller(true);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check seller status:', err);
+      } finally {
+        setCheckingStatus(false);
+      }
+    }
+
+    checkSellerStatus();
+  }, [user]);
+
+  const totalSteps = 7;
   const progress = (currentStep / totalSteps) * 100;
 
   const canProceedToNextStep = () => {
@@ -192,8 +222,6 @@ export default function SellerRegisterNewPage() {
         return foodSafetyCompliant && declarationComplianceDocs;
       case 7:
         return true; // Optional, can be filled later
-      case 8:
-        return bio.trim().length >= 100 && bio.trim().length <= 300 && termsAccepted;
       default:
         return false;
     }
@@ -326,8 +354,8 @@ export default function SellerRegisterNewPage() {
           gstRegistered,
           gstIncludedInPricing,
 
-          // Profile
-          bio: bio.trim(),
+          // Profile (optional - can be added later)
+          bio: bio.trim() || undefined,
           profileImageUrl: profilePhotoUrl || undefined,
           farmPhotoUrls: farmPhotoUrls.length > 0 ? farmPhotoUrls : undefined,
 
@@ -364,6 +392,20 @@ export default function SellerRegisterNewPage() {
   };
 
 
+  if (checkingStatus) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-muted-foreground">Checking your seller status...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -378,6 +420,58 @@ export default function SellerRegisterNewPage() {
             <div className="mt-4">
               <Link href="/auth/consumer?next=/seller/register-new">
                 <Button className="w-full">Sign In</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isVerifiedSeller) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950 dark:to-orange-950">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                <CheckCircle2 className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl">You are already a verified seller</CardTitle>
+                <CardDescription>
+                  Your seller account is active and ready to use.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert>
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertDescription>
+                You can start creating listings, managing batches, and receiving orders right away.
+              </AlertDescription>
+            </Alert>
+            <div className="space-y-2">
+              <Link href="/seller/dashboard" className="block">
+                <Button className="w-full" size="lg">
+                  Go to Dashboard
+                </Button>
+              </Link>
+              <Link href="/seller/listings" className="block">
+                <Button variant="outline" className="w-full">
+                  View Your Products
+                </Button>
+              </Link>
+              <Link href="/seller/batches" className="block">
+                <Button variant="outline" className="w-full">
+                  Manage Batches
+                </Button>
+              </Link>
+              <Link href="/" className="block">
+                <Button variant="ghost" className="w-full">
+                  Return to Home
+                </Button>
               </Link>
             </div>
           </CardContent>
@@ -1167,93 +1261,6 @@ export default function SellerRegisterNewPage() {
               </div>
             )}
 
-            {/* Step 8: Public Seller Profile Content */}
-            {currentStep === 8 && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">H. Public Seller Profile Content</h3>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="bio">Short Bio * (100-300 words)</Label>
-                      <Textarea
-                        id="bio"
-                        value={bio}
-                        onChange={(e) => setBio(e.target.value)}
-                        placeholder="Tell customers about yourself, where you keep bees, and what makes your honey unique..."
-                        rows={6}
-                        required
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        {bio.trim().split(/\s+/).filter(w => w.length > 0).length} words (100-300 required)
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Profile Photo (Optional)</Label>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            await handleFileUpload(file, 'profile');
-                          }
-                        }}
-                        disabled={uploading}
-                      />
-                      {profilePhotoUrl && (
-                        <div className="mt-2">
-                          <CheckCircle2 className="h-5 w-5 text-green-600 inline mr-2" />
-                          <span className="text-sm text-muted-foreground">Profile photo uploaded</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Farm / Apiary Photos (Optional)</Label>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={async (e) => {
-                          const files = Array.from(e.target.files || []);
-                          if (files.length > 0) {
-                            setFarmPhotos([...farmPhotos, ...files]);
-                            for (const file of files) {
-                              await handleFileUpload(file, 'farm');
-                            }
-                          }
-                        }}
-                        disabled={uploading}
-                      />
-                      {farmPhotoUrls.length > 0 && (
-                        <div className="mt-2">
-                          <CheckCircle2 className="h-5 w-5 text-green-600 inline mr-2" />
-                          <span className="text-sm text-muted-foreground">
-                            {farmPhotoUrls.length} photo(s) uploaded
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="pt-4 border-t space-y-4">
-                      <h4 className="font-medium">Final Declarations</h4>
-                      <div className="flex items-start gap-2">
-                        <Checkbox
-                          id="termsAccepted"
-                          checked={termsAccepted}
-                          onCheckedChange={(checked) => setTermsAccepted(checked === true)}
-                          className="mt-1"
-                        />
-                        <Label htmlFor="termsAccepted" className="text-sm cursor-pointer">
-                          I have read and agree to the Hive Joy Seller Terms & Conditions *
-                        </Label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {currentStep < totalSteps && (
               <div className="flex justify-between mt-8">

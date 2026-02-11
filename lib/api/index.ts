@@ -1,11 +1,11 @@
-// Products
+// Products - Use database functions instead of mock data
 export {
   getProducts,
   getProduct,
   getFeaturedProducts,
   getProductsByProducer,
   searchProducts,
-} from './products';
+} from './database';
 
 // Producers
 export {

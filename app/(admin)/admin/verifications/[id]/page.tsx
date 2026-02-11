@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { getVerification, approveVerification, rejectVerification } from '@/lib/api';
+import { getVerification, approveVerification, rejectVerification } from '@/lib/api/admin';
 import { useAuthStore } from '@/lib/stores';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
