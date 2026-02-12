@@ -3,14 +3,9 @@
 // Note: We use Cloudinary REST API directly instead of the SDK
 // because the SDK requires Node.js modules that aren't available in the browser
 
-export type UploadFolder = 'products' | 'producers' | 'verification' | 'batches';
+import type { UploadFolder, UploadResult } from '@/types/integrations';
 
-export interface UploadResult {
-  success: boolean;
-  url?: string;
-  publicId?: string;
-  error?: string;
-}
+export type { UploadFolder, UploadResult };
 
 /**
  * Upload a single image to Cloudinary

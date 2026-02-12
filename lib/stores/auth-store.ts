@@ -3,23 +3,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, UserRole, ProducerProfile } from '@/types';
+import type { AuthState } from '@/types/stores';
 import { createClient } from '@/lib/supabase/client';
-
-interface AuthState {
-  user: User | null;
-  producerProfile: ProducerProfile | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  
-  // Actions
-  setUser: (user: User | null) => void;
-  setProducerProfile: (profile: ProducerProfile | null) => void;
-  setLoading: (loading: boolean) => void;
-  logout: () => Promise<void>;
-  
-  // Dev helpers
-  devSetRole: (role: UserRole) => void;
-}
 
 export const useAuthStore = create<AuthState>()(
   persist(

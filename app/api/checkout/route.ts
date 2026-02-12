@@ -9,8 +9,9 @@ import {
   dbUpdatePaymentStripeSession,
   dbDeleteOrder,
   ensureUserExists,
-  type CreateOrderInput,
 } from '@/lib/db/orders';
+import type { CreateOrderInput } from '@/types/database';
+import type { CheckoutItem, CheckoutRequest } from '@/types/components';
 
 function getStripeClient() {
   const apiKey = process.env.STRIPE_SECRET_KEY;
@@ -21,29 +22,6 @@ function getStripeClient() {
   return new Stripe(apiKey, {
     apiVersion: '2026-01-28.clover'
   });
-}
-
-interface CheckoutItem {
-  productId: string;
-  variantId: string;
-  quantity: number;
-}
-
-interface CheckoutRequest {
-  items: CheckoutItem[];
-  customerInfo: {
-    email: string;
-    phone: string;
-  };
-  shippingAddress: {
-    firstName: string;
-    lastName: string;
-    address: string;
-    suburb: string;
-    state: string;
-    postcode: string;
-  };
-  buyerId?: string;
 }
 
 const allowedStates = new Set(['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT']);

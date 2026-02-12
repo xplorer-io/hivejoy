@@ -3,23 +3,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CartItem, Product, ProductVariant } from '@/types';
-
-interface CartState {
-  items: CartItem[];
-  hasHydrated: boolean;
-  setHasHydrated: (value: boolean) => void;
-
-  // Actions
-  addItem: (product: Product, variant: ProductVariant, quantity?: number) => void;
-  removeItem: (variantId: string) => void;
-  updateQuantity: (variantId: string, quantity: number) => void;
-  clearCart: () => void;
-
-  // Computed
-  getItemCount: () => number;
-  getSubtotal: () => number;
-  getCartBySeller: () => Map<string, CartItem[]>;
-}
+import type { CartState } from '@/types/stores';
 
 export const useCartStore = create<CartState>()(
   persist(

@@ -11,92 +11,19 @@ import type {
   OrderStatus,
   AddressSnapshot,
 } from '@/types';
+import type {
+  DbOrder,
+  DbSubOrder,
+  DbOrderItem,
+  DbPayment,
+  DbShipment,
+  DbShipmentEvent,
+  CreateOrderInput,
+} from '@/types/database';
 
 // =============================================================
 // Helper: assemble nested Order from flat DB rows
 // =============================================================
-
-interface DbOrder {
-  id: string;
-  buyer_id: string;
-  order_number: string;
-  status: OrderStatus;
-  subtotal: number;
-  shipping_total: number;
-  platform_fee_total: number;
-  gst_total: number;
-  total: number;
-  shipping_address: AddressSnapshot;
-  billing_address?: AddressSnapshot;
-  created_at: string;
-  updated_at: string;
-}
-
-interface DbSubOrder {
-  id: string;
-  order_id: string;
-  seller_id: string;
-  status: SubOrderStatus;
-  subtotal: number;
-  shipping_cost: number;
-  platform_fee: number;
-  gst: number;
-  total: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface DbOrderItem {
-  id: string;
-  sub_order_id: string;
-  product_id: string;
-  variant_id: string;
-  product_title: string;
-  variant_size: string;
-  quantity: number;
-  unit_price: number;
-  gst: number;
-  batch_snapshot: OrderItem['batchSnapshot'];
-  created_at: string;
-}
-
-interface DbPayment {
-  id: string;
-  order_id: string;
-  stripe_checkout_session_id?: string;
-  stripe_payment_intent_id?: string;
-  amount: number;
-  currency: string;
-  status: Payment['status'];
-  method?: Payment['method'];
-  paid_at?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface DbShipment {
-  id: string;
-  sub_order_id: string;
-  carrier?: Shipment['carrier'];
-  tracking_number?: string;
-  tracking_url?: string;
-  status: Shipment['status'];
-  estimated_delivery?: string;
-  shipped_at?: string;
-  delivered_at?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface DbShipmentEvent {
-  id: string;
-  shipment_id: string;
-  status: string;
-  description: string;
-  location?: string;
-  occurred_at: string;
-  created_at: string;
-}
 
 function mapOrderItem(row: DbOrderItem): OrderItem {
   return {
@@ -389,27 +316,7 @@ export async function dbGetOrder(id: string): Promise<Order | null> {
   return orders[0] ?? null;
 }
 
-export interface CreateOrderInput {
-  buyerId: string;
-  shippingAddress: AddressSnapshot;
-  billingAddress?: AddressSnapshot;
-  subOrders: {
-    sellerId: string;
-    items: {
-      productId: string;
-      variantId: string;
-      productTitle: string;
-      variantSize: string;
-      quantity: number;
-      unitPrice: number;
-      gst: number;
-      batchSnapshot: OrderItem['batchSnapshot'];
-    }[];
-    shippingCost: number;
-    platformFee: number;
-  }[];
-  stripeCheckoutSessionId: string;
-}
+// CreateOrderInput is now exported from @/types/database
 
 export async function dbCreateOrder(input: CreateOrderInput): Promise<Order> {
   const supabase = createAdminClient();

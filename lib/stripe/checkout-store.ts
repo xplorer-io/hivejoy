@@ -1,15 +1,4 @@
-type CheckoutItemSnapshot = {
-  productId: string;
-  variantId: string;
-  quantity: number;
-};
-
-type CheckoutSnapshot = {
-  nonce: string;
-  customerEmail: string;
-  items: CheckoutItemSnapshot[];
-  createdAt: number;
-};
+import type { CheckoutItemSnapshot, CheckoutSnapshot } from '@/types/integrations';
 
 // @TODO: migrate this logic to a database, in memory is not scalable and reliable
 const MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2 hours

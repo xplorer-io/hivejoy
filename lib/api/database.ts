@@ -12,66 +12,13 @@ import type {
   ProductFilters,
   PaginatedResponse,
 } from '@/types';
-
-// Database row types
-interface ProducerRow {
-  id: string;
-  user_id: string;
-  business_name: string;
-  abn?: string;
-  street: string;
-  suburb: string;
-  state: string;
-  postcode: string;
-  country?: string;
-  bio: string;
-  profile_image?: string;
-  cover_image?: string;
-  verification_status: string;
-  badge_level: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface BatchRow {
-  id: string;
-  producer_id: string;
-  region: string;
-  harvest_date: string;
-  extraction_date: string;
-  floral_source_tags: string[];
-  notes?: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface VariantRow {
-  id: string;
-  product_id: string;
-  size: string;
-  price: string | number;
-  stock: number;
-  weight: string | number;
-  barcode?: string;
-}
-
-interface ProductRow {
-  id: string;
-  producer_id: string;
-  batch_id: string;
-  title: string;
-  description?: string;
-  photos: string[];
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface ProductRowWithRelations extends ProductRow {
-  producer?: ProducerRow;
-  batch?: BatchRow;
-}
+import type {
+  ProducerRow,
+  BatchRow,
+  VariantRow,
+  ProductRow,
+  ProductRowWithRelations,
+} from '@/types/database';
 
 /**
  * Get user profile from profiles table

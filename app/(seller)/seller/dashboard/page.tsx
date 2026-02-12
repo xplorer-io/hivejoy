@@ -17,14 +17,7 @@ import {
 } from "lucide-react";
 import { getSellerOrderStats } from "@/lib/api";
 import { getBatchesByProducer } from "@/lib/api/database";
-
-interface DashboardStats {
-  totalOrders: number;
-  pendingOrders: number;
-  processingOrders: number;
-  completedOrders: number;
-  totalRevenue: number;
-}
+import type { DashboardStats } from "@/types/components";
 
 export default function SellerDashboardPage() {
   const { user } = useAuthStore();

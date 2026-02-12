@@ -1,31 +1,12 @@
 import sgMail from '@sendgrid/mail';
+import type {
+  SellerRegistrationEmailData,
+  VerificationRequestEmailData,
+} from '@/types/integrations';
 
 // Initialize SendGrid
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
-
-export interface SellerRegistrationEmailData {
-  businessName: string;
-  email: string;
-  abn?: string;
-  address: {
-    street: string;
-    suburb: string;
-    state: string;
-    postcode: string;
-    country: string;
-  };
-  bio: string;
-  producerId: string;
-  userId: string;
-  // Additional comprehensive fields
-  fullLegalName?: string;
-  sellerType?: string;
-  phoneNumber?: string;
-  beekeeperRegistrationNumber?: string;
-  registeringAuthority?: string;
-  applicationId?: string;
 }
 
 /**
@@ -211,27 +192,7 @@ User ID: ${data.userId}
   }
 }
 
-export interface VerificationRequestEmailData {
-  businessName: string;
-  email: string;
-  abn?: string;
-  address: {
-    street: string;
-    suburb: string;
-    state: string;
-    postcode: string;
-    country: string;
-  };
-  bio?: string;
-  producerId: string;
-  userId: string;
-  submissionId: string;
-  documents: Array<{
-    type: string;
-    name: string;
-    url: string;
-  }>;
-}
+// VerificationRequestEmailData is now exported from @/types/integrations
 
 /**
  * Send email notification to admin when a seller submits verification proof
