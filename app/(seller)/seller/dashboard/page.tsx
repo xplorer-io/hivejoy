@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/stores";
-// Removed direct imports - using API endpoints instead
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +15,8 @@ import {
   ArrowRight,
   Layers,
 } from "lucide-react";
+import { getSellerOrderStats } from "@/lib/api";
+import { getBatchesByProducer } from "@/lib/api/database";
 
 interface DashboardStats {
   totalOrders: number;

@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeft, X, AlertCircle } from "lucide-react";
+import { createBatch } from "@/lib/api/batches";
 
 export default function NewBatchPage() {
   const router = useRouter();
@@ -81,7 +82,7 @@ export default function NewBatchPage() {
     }
 
     try {
-      await createBatch({
+      const batch = await createBatch({
         producerId: "00000000-0000-0000-0002-000000000001", // Mock producer ID
         region: `${formData.get("suburb")}, ${finalRegion}`,
         harvestDate: formData.get("harvestDate") as string,
@@ -91,21 +92,7 @@ export default function NewBatchPage() {
         status: "active",
       });
 
-      const data = await response.json();
-
-      console.log("[NewBatchPage] Batch creation response:", data);
-
-      if (!response.ok || !data.success) {
-        const errorMessage = data.error || "Failed to create batch";
-
-        // If producer profile not found, redirect to registration
-        if (errorMessage.includes("Producer profile not found")) {
-          router.push("/seller/register");
-          return;
-        }
-
-        throw new Error(errorMessage);
-      }
+      console.log("[NewBatchPage] Batch creation response:", batch);
 
       // Show success message
       setError(null);

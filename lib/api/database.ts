@@ -8,7 +8,7 @@ import type {
   ProductWithDetails,
   Batch,
   ProductVariant,
-  Address,
+  AddressSnapshot,
   ProductFilters,
   PaginatedResponse,
 } from '@/types';
@@ -164,6 +164,7 @@ function mapProduct(row: ProductRow, variants: ProductVariant[] = []): Product {
     photos: row.photos || [],
     status: row.status as Product['status'],
     variants,
+    reviewCount: 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -764,7 +765,7 @@ export async function createProducer(
     userId: string;
     businessName: string;
     abn?: string;
-    address: Address;
+    address: AddressSnapshot;
     bio: string;
     profileImage?: string; // Cloudinary URL
     coverImage?: string; // Cloudinary URL

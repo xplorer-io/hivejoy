@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-// Removed getBatchesByProducer import - using API endpoint instead
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Batch } from "@/types";
 import { DateTime } from "luxon";
 import { Plus, MapPin, Calendar, Flower2 } from "lucide-react";
+import { getBatchesByProducer } from "@/lib/api/database";
 
 const statusColors: Record<Batch["status"], string> = {
   draft: "bg-gray-100 text-gray-800",

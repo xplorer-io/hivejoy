@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Product } from "@/types";
 import { Plus, Package, Edit } from "lucide-react";
+import { getProductsByProducer } from "@/lib/api";
 
 const statusColors: Record<Product["status"], string> = {
   draft: "bg-gray-100 text-gray-800",

@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-// Removed getBatchesByProducer import - now using API endpoint
 import { uploadImages } from "@/lib/cloudinary/upload";
 import { useAuthStore } from "@/lib/stores";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,7 @@ import {
   X,
   AlertCircle,
 } from "lucide-react";
+import { getBatchesByProducer } from "@/lib/api/database";
 
 interface Variant {
   id: string;
