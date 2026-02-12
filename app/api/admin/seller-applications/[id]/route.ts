@@ -22,7 +22,7 @@ export async function GET(
 
     // Check if user is admin
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
@@ -41,7 +41,7 @@ export async function GET(
       .from('producers')
       .select(`
         *,
-        profiles:user_id (
+        users:user_id (
           id,
           email,
           role
@@ -117,7 +117,7 @@ export async function PATCH(
 
     // Check if user is admin
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
@@ -223,7 +223,7 @@ export async function PATCH(
 
       if (producerData && (producerData as { user_id?: string }).user_id) {
         await supabase
-          .from('profiles')
+          .from('users')
           .update({ role: 'producer' })
           .eq('id', (producerData as { user_id: string }).user_id);
       }

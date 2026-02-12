@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       console.log('[POST /api/products/create] No producer found, creating new one...');
       // Auto-create a minimal producer profile for verified sellers (temporary for development)
       const { data: profile } = await supabase
-        .from('profiles')
+        .from('users')
         .select('email')
         .eq('id', user.id)
         .single();

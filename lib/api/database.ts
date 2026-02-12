@@ -27,7 +27,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
   const supabase = await createClient();
   
   const { data, error } = await supabase
-    .from('profiles')
+    .from('users')
     .select('*')
     .eq('id', userId)
     .single();
@@ -777,9 +777,9 @@ export async function createProducer(
 
   // Send email notification to agent after successful producer creation
   try {
-    // Get user's email from profiles table
+    // Get user's email from users table
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('users')
       .select('email')
       .eq('id', producerData.userId)
       .single();

@@ -584,6 +584,9 @@ export async function dbReconcilePaymentByNonce(
 /**
  * Ensure the authenticated Supabase Auth user has a corresponding row
  * in the public.users table. Uses upsert so it's safe to call repeatedly.
+ * 
+ * Note: A database trigger should automatically create user entries on signup,
+ * but this function serves as a safety fallback for edge cases.
  */
 export async function ensureUserExists(authUser: SupabaseAuthUser): Promise<void> {
   const supabase = createAdminClient();
