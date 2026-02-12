@@ -4,7 +4,7 @@ import { sendSellerRegistrationEmail } from '@/lib/sendgrid/email';
 /**
  * Test endpoint to send seller registration email
  * This endpoint allows you to test the email functionality without creating a producer
- * Usage: POST /api/test/send-seller-email
+ * Usage: POST /dev/test/api/send-seller-email
  */
 export async function POST(request: Request) {
   // Restrict to non-production environments

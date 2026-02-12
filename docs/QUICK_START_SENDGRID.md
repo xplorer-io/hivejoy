@@ -40,7 +40,7 @@ You need to verify a sender email in SendGrid before you can send emails. Here's
 
 Now you can test:
 1. Restart your dev server: `npm run dev`
-2. Go to: `http://localhost:3000/test-sendgrid`
+2. Go to: `http://localhost:3000/dev/test/sendgrid`
 3. Send a test email!
 
 ## ❓ Common Questions

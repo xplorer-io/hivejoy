@@ -90,7 +90,7 @@ Once your sender is verified:
    ```
 
 3. **Test it:**
-   - Go to `http://localhost:3000/test-sendgrid`
+   - Go to `http://localhost:3000/dev/test/sendgrid`
    - Send a test email
 
 ## Still Having Issues?

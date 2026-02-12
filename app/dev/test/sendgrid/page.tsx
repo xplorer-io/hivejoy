@@ -35,7 +35,7 @@ export default function TestSendGridPage() {
     setResult(null);
 
     try {
-      const response = await fetch('/api/test/send-seller-email', {
+      const response = await fetch('/dev/test/api/send-seller-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

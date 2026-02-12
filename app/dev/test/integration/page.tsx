@@ -80,7 +80,7 @@ export default function TestIntegrationPage() {
       // Step 2: Save to Supabase with Cloudinary URL
       const userId = user.id;
 
-      const response = await fetch('/api/test/create-producer', {
+      const response = await fetch('/dev/test/api/create-producer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

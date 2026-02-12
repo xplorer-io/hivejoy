@@ -49,7 +49,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000  # For development
 Use the test endpoint to send a sample email without creating a producer:
 
 ```bash
-curl -X POST http://localhost:3000/api/test/send-seller-email \
+curl -X POST http://localhost:3000/dev/test/api/send-seller-email \
   -H "Content-Type: application/json" \
   -d '{
     "businessName": "Test Honey Farm",
@@ -80,7 +80,7 @@ Or use a tool like Postman, or create a simple test page.
 2. **Sign in to your application** (you need to be authenticated)
 
 3. **Go to the test integration page:**
-   - Navigate to `http://localhost:3000/test-integration`
+   - Navigate to `http://localhost:3000/dev/test/integration`
    - Fill in the form with test data
    - Upload an image
    - Submit the form
