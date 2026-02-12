@@ -1,97 +1,194 @@
-'use client';
+"use client";
 
-import { Suspense, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { useAuthStore, useCartStore } from '@/lib/stores';
-import { getOrders } from '@/lib/api/orders';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import type { Order } from '@/types';
-import { DateTime } from 'luxon';
-import { Package, CheckCircle, Truck, Clock, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useAuthStore, useCartStore } from "@/lib/stores";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Order, SubOrderStatus } from "@/types";
+import { DateTime } from "luxon";
+import {
+  Package,
+  CheckCircle,
+  Truck,
+  Clock,
+  ShoppingBag,
+  ArrowRight,
+} from "lucide-react";
 
-const statusConfig: Record<
-  Order['status'],
+const orderStatusConfig: Record<
+  Order["status"],
   { label: string; color: string; icon: typeof Package }
 > = {
-  pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800', icon: CheckCircle },
-  processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Package },
-  packed: { label: 'Packed', color: 'bg-purple-100 text-purple-800', icon: Package },
-  shipped: { label: 'Shipped', color: 'bg-indigo-100 text-indigo-800', icon: Truck },
-  delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: Clock },
-  refunded: { label: 'Refunded', color: 'bg-gray-100 text-gray-800', icon: Clock },
+  pending: {
+    label: "Pending",
+    color: "bg-yellow-100 text-yellow-800",
+    icon: Clock,
+  },
+  confirmed: {
+    label: "Confirmed",
+    color: "bg-blue-100 text-blue-800",
+    icon: CheckCircle,
+  },
+  partially_shipped: {
+    label: "Partially Shipped",
+    color: "bg-indigo-100 text-indigo-800",
+    icon: Truck,
+  },
+  shipped: {
+    label: "Shipped",
+    color: "bg-indigo-100 text-indigo-800",
+    icon: Truck,
+  },
+  delivered: {
+    label: "Delivered",
+    color: "bg-green-100 text-green-800",
+    icon: CheckCircle,
+  },
+  cancelled: {
+    label: "Cancelled",
+    color: "bg-red-100 text-red-800",
+    icon: Clock,
+  },
 };
 
-function SuccessMessage() {
+const subOrderStatusConfig: Record<
+  SubOrderStatus,
+  { label: string; color: string; icon: typeof Package }
+> = {
+  pending: {
+    label: "Pending",
+    color: "bg-yellow-100 text-yellow-800",
+    icon: Clock,
+  },
+  confirmed: {
+    label: "Confirmed",
+    color: "bg-blue-100 text-blue-800",
+    icon: CheckCircle,
+  },
+  processing: {
+    label: "Processing",
+    color: "bg-blue-100 text-blue-800",
+    icon: Package,
+  },
+  packed: {
+    label: "Packed",
+    color: "bg-purple-100 text-purple-800",
+    icon: Package,
+  },
+  shipped: {
+    label: "Shipped",
+    color: "bg-indigo-100 text-indigo-800",
+    icon: Truck,
+  },
+  delivered: {
+    label: "Delivered",
+    color: "bg-green-100 text-green-800",
+    icon: CheckCircle,
+  },
+  cancelled: {
+    label: "Cancelled",
+    color: "bg-red-100 text-red-800",
+    icon: Clock,
+  },
+  return_requested: {
+    label: "Return Requested",
+    color: "bg-orange-100 text-orange-800",
+    icon: Clock,
+  },
+  returned: {
+    label: "Returned",
+    color: "bg-gray-100 text-gray-800",
+    icon: Package,
+  },
+  refunded: {
+    label: "Refunded",
+    color: "bg-gray-100 text-gray-800",
+    icon: Clock,
+  },
+};
+
+function SuccessMessage({ onVerified }: { onVerified?: () => void }) {
   const searchParams = useSearchParams();
-  const showSuccess = searchParams.get('success') === 'true';
-  const sessionId = searchParams.get('session_id');
-  const [asyncStatus, setAsyncStatus] = useState<'pending' | 'verified' | 'failed' | null>(null);
+  const showSuccess = searchParams.get("success") === "true";
+  const sessionId = searchParams.get("session_id");
+  const [asyncStatus, setAsyncStatus] = useState<
+    "pending" | "verified" | "failed" | null
+  >(null);
   const { clearCart } = useCartStore();
   const [cartCleared, setCartCleared] = useState(false);
   const hasFinalStatus = useRef(false);
+  const pollCount = useRef(0);
   const status = !showSuccess
-    ? 'idle'
+    ? "idle"
     : !sessionId
-      ? 'failed'
-      : asyncStatus ?? 'loading';
+      ? "failed"
+      : (asyncStatus ?? "loading");
 
   useEffect(() => {
-    if (!showSuccess) {
-      return;
-    }
-
-    if (!sessionId) {
-      return;
-    }
-
-    if (hasFinalStatus.current) {
+    if (!showSuccess || !sessionId || hasFinalStatus.current) {
       return;
     }
 
     let isActive = true;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
-    fetch(`/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`)
-      .then(async (response) => {
+    async function checkSession() {
+      try {
+        const response = await fetch(
+          `/api/checkout/session?session_id=${encodeURIComponent(sessionId!)}`,
+        );
         const data = await response.json();
+
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to verify payment');
+          throw new Error(data.error || "Failed to verify payment");
         }
-        return data;
-      })
-      .then((data) => {
+
         if (!isActive) return;
+
         const isPaid = data.paid === true;
         const isVerified = data.verified === true;
-        const nextStatus = isVerified ? (isPaid ? 'verified' : 'failed') : 'pending';
+
         if (isVerified) {
           hasFinalStatus.current = true;
+          setAsyncStatus(isPaid ? "verified" : "failed");
+          if (isPaid && !cartCleared) {
+            clearCart();
+            setCartCleared(true);
+          }
+          onVerified?.();
+          return;
         }
-        setAsyncStatus(nextStatus);
-        if (isPaid && isVerified && !cartCleared) {
-          clearCart();
-          setCartCleared(true);
+
+        // Not yet verified -- poll again (up to ~30s with 3s intervals)
+        pollCount.current += 1;
+        if (pollCount.current < 10) {
+          setAsyncStatus("pending");
+          pollTimer = setTimeout(checkSession, 3000);
+        } else {
+          // Give up polling; show pending state
+          setAsyncStatus("pending");
         }
-      })
-      .catch(() => {
-        if (!isActive) return;
-        if (hasFinalStatus.current) return;
-        setAsyncStatus('failed');
-      });
+      } catch {
+        if (!isActive || hasFinalStatus.current) return;
+        setAsyncStatus("failed");
+      }
+    }
+
+    checkSession();
 
     return () => {
       isActive = false;
+      if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [showSuccess, sessionId, cartCleared, clearCart]);
+  }, [showSuccess, sessionId, cartCleared, clearCart, onVerified]);
 
   if (!showSuccess) return null;
 
-  if (status === 'loading' || status === 'idle') {
+  if (status === "loading" || status === "idle") {
     return (
       <Card className="mb-8 border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
         <CardContent className="p-6 flex items-center gap-4">
@@ -111,7 +208,7 @@ function SuccessMessage() {
     );
   }
 
-  if (status === 'failed') {
+  if (status === "failed") {
     return (
       <Card className="mb-8 border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800">
         <CardContent className="p-6 flex items-center gap-4">
@@ -123,8 +220,8 @@ function SuccessMessage() {
               Payment verification incomplete
             </h2>
             <p className="text-sm text-red-800 dark:text-red-200">
-              We couldn&apos;t verify this payment yet. If you were charged, please
-              contact support.
+              We couldn&apos;t verify this payment yet. If you were charged,
+              please contact support.
             </p>
           </div>
         </CardContent>
@@ -132,7 +229,7 @@ function SuccessMessage() {
     );
   }
 
-  if (status === 'pending') {
+  if (status === "pending") {
     return (
       <Card className="mb-8 border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
         <CardContent className="p-6 flex items-center gap-4">
@@ -163,7 +260,8 @@ function SuccessMessage() {
             Order Placed Successfully!
           </h2>
           <p className="text-sm text-green-700 dark:text-green-200">
-            Thank you for your order. You&apos;ll receive a confirmation email shortly.
+            Thank you for your order. You&apos;ll receive a confirmation email
+            shortly.
           </p>
         </div>
       </CardContent>
@@ -175,30 +273,46 @@ function OrdersContent() {
   const { user, isAuthenticated } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(false);
+  const fetchOrdersRef = useRef<() => void>(() => {});
+
+  const fetchOrders = async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setAuthError(false);
+      const response = await fetch("/api/orders?role=buyer");
+      if (response.status === 401) {
+        setAuthError(true);
+        setOrders([]);
+        return;
+      }
+      if (!response.ok) {
+        throw new Error("Failed to fetch orders");
+      }
+      const result = await response.json();
+      setOrders(result.data);
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchOrdersRef.current = fetchOrders;
+
   const successBanner = (
     <Suspense fallback={null}>
-      <SuccessMessage />
+      <SuccessMessage onVerified={() => fetchOrdersRef.current()} />
     </Suspense>
   );
 
   useEffect(() => {
-    async function fetchOrders() {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const result = await getOrders(user.id, 'buyer');
-        setOrders(result.data);
-      } catch (error) {
-        console.error('Failed to fetch orders:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   if (!isAuthenticated) {
@@ -239,6 +353,20 @@ function OrdersContent() {
             </Card>
           ))}
         </div>
+      ) : authError ? (
+        <div className="max-w-md mx-auto text-center py-12">
+          <div className="h-24 w-24 mx-auto mb-6 rounded-full bg-red-50 dark:bg-red-950 flex items-center justify-center">
+            <Clock className="h-12 w-12 text-red-400" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">Session expired</h2>
+          <p className="text-muted-foreground mb-6">
+            Your login session has expired. Please sign in again to view your
+            orders.
+          </p>
+          <Link href="/auth">
+            <Button>Sign In Again</Button>
+          </Link>
+        </div>
       ) : orders.length === 0 ? (
         <div className="max-w-md mx-auto text-center py-12">
           <div className="h-24 w-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
@@ -246,7 +374,8 @@ function OrdersContent() {
           </div>
           <h2 className="text-xl font-bold mb-2">No orders yet</h2>
           <p className="text-muted-foreground mb-6">
-            You haven&apos;t placed any orders. Start shopping to see your orders here.
+            You haven&apos;t placed any orders. Start shopping to see your
+            orders here.
           </p>
           <Link href="/products">
             <Button className="gap-2">
@@ -258,7 +387,7 @@ function OrdersContent() {
       ) : (
         <div className="space-y-4">
           {orders.map((order) => {
-            const config = statusConfig[order.status];
+            const config = orderStatusConfig[order.status];
             const StatusIcon = config.icon;
             const createdAt = DateTime.fromISO(order.createdAt);
 
@@ -267,10 +396,10 @@ function OrdersContent() {
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                     <div>
-                      <p className="font-semibold">Order #{order.id}</p>
+                      <p className="font-semibold">Order {order.orderNumber}</p>
                       <p className="text-sm text-muted-foreground">
-                        Placed {createdAt.toFormat('d MMMM yyyy')} at{' '}
-                        {createdAt.toFormat('h:mm a')}
+                        Placed {createdAt.toFormat("d MMMM yyyy")} at{" "}
+                        {createdAt.toFormat("h:mm a")}
                       </p>
                     </div>
                     <Badge className={`gap-1 ${config.color}`}>
@@ -279,26 +408,59 @@ function OrdersContent() {
                     </Badge>
                   </div>
 
-                  <div className="space-y-2 mb-4">
-                    {order.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex justify-between text-sm"
-                      >
-                        <span>
-                          {item.productTitle} ({item.variantSize}) × {item.quantity}
-                        </span>
-                        <span>${(item.unitPrice * item.quantity).toFixed(2)}</span>
+                  {/* Sub-orders grouped by seller */}
+                  {order.subOrders.map((subOrder) => {
+                    const soConfig = subOrderStatusConfig[subOrder.status];
+                    const SoIcon = soConfig.icon;
+
+                    return (
+                      <div key={subOrder.id} className="mb-4 last:mb-0">
+                        {order.subOrders.length > 1 && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge
+                              variant="outline"
+                              className={`gap-1 text-xs ${soConfig.color}`}
+                            >
+                              <SoIcon className="h-3 w-3" />
+                              {soConfig.label}
+                            </Badge>
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          {subOrder.items.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex justify-between text-sm"
+                            >
+                              <span>
+                                {item.productTitle} ({item.variantSize}) x{" "}
+                                {item.quantity}
+                              </span>
+                              <span>
+                                ${(item.unitPrice * item.quantity).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {subOrder.shipment?.trackingNumber && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Tracking: {subOrder.shipment.trackingNumber}
+                          </p>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
 
                   <div className="flex justify-between items-center pt-4 border-t">
-                    <span className="font-semibold">Total: ${order.total.toFixed(2)}</span>
-                    {order.trackingNumber && (
-                      <p className="text-sm text-muted-foreground">
-                        Tracking: {order.trackingNumber}
-                      </p>
+                    <span className="font-semibold">
+                      Total: ${order.total.toFixed(2)}
+                    </span>
+                    {order.payment && (
+                      <Badge variant="outline" className="text-xs">
+                        {order.payment.status === "succeeded"
+                          ? "Paid"
+                          : order.payment.status}
+                      </Badge>
                     )}
                   </div>
                 </CardContent>
@@ -313,21 +475,23 @@ function OrdersContent() {
 
 export default function OrdersPage() {
   return (
-    <Suspense fallback={
-      <div className="container px-4 py-8">
-        <Skeleton className="h-8 w-48 mb-8" />
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="h-5 w-32 mb-4" />
-                <Skeleton className="h-4 w-48" />
-              </CardContent>
-            </Card>
-          ))}
+    <Suspense
+      fallback={
+        <div className="container px-4 py-8">
+          <Skeleton className="h-8 w-48 mb-8" />
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <Skeleton className="h-5 w-32 mb-4" />
+                  <Skeleton className="h-4 w-48" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <OrdersContent />
     </Suspense>
   );

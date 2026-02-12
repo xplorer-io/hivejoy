@@ -4,18 +4,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Clock, CheckCircle } from 'lucide-react';
+import type { DisputeStatus, Dispute } from '@/types/components';
 
 // Mock disputes for demo
-type DisputeStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
-
-interface Dispute {
-  id: string;
-  orderId: string;
-  reason: string;
-  status: DisputeStatus;
-  createdAt: string;
-  buyerEmail: string;
-}
 
 const mockDisputes: Dispute[] = [
   {

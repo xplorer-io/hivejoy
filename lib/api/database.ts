@@ -8,70 +8,17 @@ import type {
   ProductWithDetails,
   Batch,
   ProductVariant,
-  Address,
+  AddressSnapshot,
   ProductFilters,
   PaginatedResponse,
 } from '@/types';
-
-// Database row types
-interface ProducerRow {
-  id: string;
-  user_id: string;
-  business_name: string;
-  abn?: string;
-  street: string;
-  suburb: string;
-  state: string;
-  postcode: string;
-  country?: string;
-  bio: string;
-  profile_image?: string;
-  cover_image?: string;
-  verification_status: string;
-  badge_level: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface BatchRow {
-  id: string;
-  producer_id: string;
-  region: string;
-  harvest_date: string;
-  extraction_date: string;
-  floral_source_tags: string[];
-  notes?: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface VariantRow {
-  id: string;
-  product_id: string;
-  size: string;
-  price: string | number;
-  stock: number;
-  weight: string | number;
-  barcode?: string;
-}
-
-interface ProductRow {
-  id: string;
-  producer_id: string;
-  batch_id: string;
-  title: string;
-  description?: string;
-  photos: string[];
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface ProductRowWithRelations extends ProductRow {
-  producer?: ProducerRow;
-  batch?: BatchRow;
-}
+import type {
+  ProducerRow,
+  BatchRow,
+  VariantRow,
+  ProductRow,
+  ProductRowWithRelations,
+} from '@/types/database';
 
 /**
  * Get user profile from profiles table
@@ -80,7 +27,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
   const supabase = await createClient();
   
   const { data, error } = await supabase
-    .from('profiles')
+    .from('users')
     .select('*')
     .eq('id', userId)
     .single();
@@ -164,6 +111,8 @@ function mapProduct(row: ProductRow, variants: ProductVariant[] = []): Product {
     photos: row.photos || [],
     status: row.status as Product['status'],
     variants,
+    // Optional fields - not in ProductRow schema, defaults provided
+    reviewCount: 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -764,7 +713,7 @@ export async function createProducer(
     userId: string;
     businessName: string;
     abn?: string;
-    address: Address;
+    address: AddressSnapshot;
     bio: string;
     profileImage?: string; // Cloudinary URL
     coverImage?: string; // Cloudinary URL
@@ -829,9 +778,9 @@ export async function createProducer(
 
   // Send email notification to agent after successful producer creation
   try {
-    // Get user's email from profiles table
+    // Get user's email from users table
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('users')
       .select('email')
       .eq('id', producerData.userId)
       .single();

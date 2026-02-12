@@ -1,26 +1,33 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
-// Removed getBatchesByProducer import - now using API endpoint
-import { uploadImages } from '@/lib/cloudinary/upload';
-import { useAuthStore } from '@/lib/stores';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { uploadImages } from "@/lib/cloudinary/upload";
+import { useAuthStore } from "@/lib/stores";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import type { Batch } from '@/types';
-import { ChevronLeft, Plus, Trash2, Upload, X, AlertCircle } from 'lucide-react';
+} from "@/components/ui/select";
+import type { Batch } from "@/types";
+import {
+  ChevronLeft,
+  Plus,
+  Trash2,
+  Upload,
+  X,
+  AlertCircle,
+} from "lucide-react";
+import { getBatchesByProducer } from "@/lib/api/database";
 
 interface Variant {
   id: string;
@@ -34,56 +41,36 @@ export default function NewListingPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [producerId, setProducerId] = useState<string | null>(null);
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [selectedBatch, setSelectedBatch] = useState('');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [selectedBatch, setSelectedBatch] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [variants, setVariants] = useState<Variant[]>([
-    { id: '1', size: '250g', price: '', stock: '', weight: '250' },
+    { id: "1", size: "250g", price: "", stock: "", weight: "250" },
   ]);
 
   // Get producer ID and fetch batches (producer profile will be auto-created if needed)
   useEffect(() => {
     async function fetchProducerData() {
       if (!user?.id) {
-        setError('Please sign in to create a listing.');
+        setError("Please sign in to create a listing.");
         return;
       }
 
       try {
-        // Try to get producer profile, but don't error if it doesn't exist
-        // It will be auto-created when creating a listing
-        const response = await fetch('/api/producers/me');
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.producer) {
-            setProducerId(data.producer.id);
-          }
-        } else {
-          // 404 is expected if no producer exists yet - that's okay
-          console.log('[NewListingPage] No producer profile found (will be auto-created)');
-        }
-        
-        // Fetch batches for this producer via API
-        const batchesResponse = await fetch('/api/batches');
-        const batchesResult = await batchesResponse.json();
-        
-        if (batchesResult.success && batchesResult.batches) {
-          setBatches(batchesResult.batches.filter((b: Batch) => b.status === 'active'));
-        } else {
-          setBatches([]);
-        }
-      } catch (err) {
-        console.error('Failed to fetch producer data:', err);
-        // Don't set error - allow user to proceed, profile will be auto-created
+        const data = await getBatchesByProducer(
+          "00000000-0000-0000-0002-000000000001",
+        );
+        setBatches(data.filter((b) => b.status === "active"));
+      } catch (error) {
+        console.error("Failed to fetch batches:", error);
       }
     }
 
@@ -95,16 +82,16 @@ export default function NewListingPage() {
     if (files.length === 0) return;
 
     // Validate file types
-    const validFiles = files.filter((file) => file.type.startsWith('image/'));
+    const validFiles = files.filter((file) => file.type.startsWith("image/"));
     if (validFiles.length !== files.length) {
-      setError('Please select only image files.');
+      setError("Please select only image files.");
       return;
     }
 
     // Limit to 5 photos
     const totalPhotos = photoFiles.length + validFiles.length;
     if (totalPhotos > 5) {
-      setError('Maximum 5 photos allowed.');
+      setError("Maximum 5 photos allowed.");
       return;
     }
 
@@ -113,24 +100,27 @@ export default function NewListingPage() {
 
     try {
       // Upload to Cloudinary
-      const uploadResults = await uploadImages(validFiles, 'products');
-      
+      const uploadResults = await uploadImages(validFiles, "products");
+
       const successfulUploads = uploadResults.filter((r) => r.success);
       if (successfulUploads.length === 0) {
-        setError('Failed to upload photos. Please try again.');
+        setError("Failed to upload photos. Please try again.");
         return;
       }
 
       // Update state
       const newUrls = successfulUploads.map((r) => r.url!);
       setPhotos([...photos, ...newUrls]);
-      setPhotoFiles([...photoFiles, ...validFiles.slice(0, successfulUploads.length)]);
+      setPhotoFiles([
+        ...photoFiles,
+        ...validFiles.slice(0, successfulUploads.length),
+      ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload photos.');
+      setError(err instanceof Error ? err.message : "Failed to upload photos.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     }
   };
@@ -144,7 +134,7 @@ export default function NewListingPage() {
     const newId = String(variants.length + 1);
     setVariants([
       ...variants,
-      { id: newId, size: '', price: '', stock: '', weight: '' },
+      { id: newId, size: "", price: "", stock: "", weight: "" },
     ]);
   };
 
@@ -156,7 +146,7 @@ export default function NewListingPage() {
 
   const updateVariant = (id: string, field: keyof Variant, value: string) => {
     setVariants(
-      variants.map((v) => (v.id === id ? { ...v, [field]: value } : v))
+      variants.map((v) => (v.id === id ? { ...v, [field]: value } : v)),
     );
   };
 
@@ -168,34 +158,34 @@ export default function NewListingPage() {
     try {
       // Validate form
       if (!title.trim() || !description.trim()) {
-        setError('Please fill in all required fields.');
+        setError("Please fill in all required fields.");
         setLoading(false);
         return;
       }
 
       if (photos.length === 0) {
-        setError('Please upload at least one photo.');
+        setError("Please upload at least one photo.");
         setLoading(false);
         return;
       }
 
       if (!selectedBatch) {
-        setError('Please select a batch.');
+        setError("Please select a batch.");
         setLoading(false);
         return;
       }
 
       // Validate variants
       const invalidVariants = variants.some(
-        (v) => !v.size.trim() || !v.price || !v.stock || !v.weight
+        (v) => !v.size.trim() || !v.price || !v.stock || !v.weight,
       );
       if (invalidVariants) {
-        setError('Please fill in all variant fields.');
+        setError("Please fill in all variant fields.");
         setLoading(false);
         return;
       }
 
-      console.log('[NewListingPage] Submitting listing with data:', {
+      console.log("[NewListingPage] Submitting listing with data:", {
         batchId: selectedBatch,
         title: title.trim(),
         description: description.trim(),
@@ -204,9 +194,9 @@ export default function NewListingPage() {
       });
 
       // Submit to API
-      const response = await fetch('/api/products/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/products/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           batchId: selectedBatch,
           title: title.trim(),
@@ -223,28 +213,32 @@ export default function NewListingPage() {
 
       const data = await response.json();
 
-      console.log('[NewListingPage] API response:', data);
+      console.log("[NewListingPage] API response:", data);
 
       if (!response.ok || !data.success) {
-        const errorMessage = data.error || 'Failed to create listing.';
-        console.error('[NewListingPage] Error creating listing:', errorMessage);
+        const errorMessage = data.error || "Failed to create listing.";
+        console.error("[NewListingPage] Error creating listing:", errorMessage);
         setError(errorMessage);
         setLoading(false);
         return;
       }
 
-      console.log('[NewListingPage] Listing created successfully:', data.product?.id);
+      console.log(
+        "[NewListingPage] Listing created successfully:",
+        data.product?.id,
+      );
 
       // Success - redirect to listings page
-      router.push('/seller/listings');
+      router.push("/seller/listings");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create listing.');
+      setError(
+        err instanceof Error ? err.message : "Failed to create listing.",
+      );
     } finally {
       setLoading(false);
     }
   };
-
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -300,14 +294,20 @@ export default function NewListingPage() {
 
             <div className="space-y-2">
               <Label htmlFor="batch">Link to Batch *</Label>
-              <Select 
-                value={selectedBatch} 
-                onValueChange={setSelectedBatch} 
+              <Select
+                value={selectedBatch}
+                onValueChange={setSelectedBatch}
                 required
                 disabled={batches.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={batches.length === 0 ? "No active batches" : "Select a batch"} />
+                  <SelectValue
+                    placeholder={
+                      batches.length === 0
+                        ? "No active batches"
+                        : "Select a batch"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {batches.length === 0 ? (
@@ -317,7 +317,8 @@ export default function NewListingPage() {
                   ) : (
                     batches.map((batch) => (
                       <SelectItem key={batch.id} value={batch.id}>
-                        {batch.region} - {new Date(batch.harvestDate).toLocaleDateString()}
+                        {batch.region} -{" "}
+                        {new Date(batch.harvestDate).toLocaleDateString()}
                       </SelectItem>
                     ))
                   )}
@@ -325,9 +326,12 @@ export default function NewListingPage() {
               </Select>
               {batches.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  <Link href="/seller/batches/new" className="text-primary hover:underline">
+                  <Link
+                    href="/seller/batches/new"
+                    className="text-primary hover:underline"
+                  >
                     Create a batch
-                  </Link>{' '}
+                  </Link>{" "}
                   first to link your listing for provenance.
                 </p>
               )}
@@ -352,7 +356,10 @@ export default function NewListingPage() {
             {photos.length > 0 && (
               <div className="grid grid-cols-3 gap-4">
                 {photos.map((photo, index) => (
-                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                  <div
+                    key={index}
+                    className="relative aspect-square rounded-lg overflow-hidden bg-muted"
+                  >
                     <Image
                       src={photo}
                       alt={`Photo ${index + 1}`}
@@ -376,8 +383,8 @@ export default function NewListingPage() {
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
                 uploading
-                  ? 'border-primary bg-primary/5'
-                  : 'border-muted-foreground/25 hover:border-primary/50'
+                  ? "border-primary bg-primary/5"
+                  : "border-muted-foreground/25 hover:border-primary/50"
               }`}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -402,7 +409,12 @@ export default function NewListingPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Variants & Pricing *</CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={addVariant}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addVariant}
+              >
                 <Plus className="h-4 w-4 mr-1" />
                 Add Variant
               </Button>
@@ -418,7 +430,9 @@ export default function NewListingPage() {
                   <Label>Size *</Label>
                   <Input
                     value={variant.size}
-                    onChange={(e) => updateVariant(variant.id, 'size', e.target.value)}
+                    onChange={(e) =>
+                      updateVariant(variant.id, "size", e.target.value)
+                    }
                     placeholder="250g"
                     required
                   />
@@ -430,7 +444,9 @@ export default function NewListingPage() {
                     step="0.01"
                     min="0"
                     value={variant.price}
-                    onChange={(e) => updateVariant(variant.id, 'price', e.target.value)}
+                    onChange={(e) =>
+                      updateVariant(variant.id, "price", e.target.value)
+                    }
                     placeholder="18.50"
                     required
                   />
@@ -441,7 +457,9 @@ export default function NewListingPage() {
                     type="number"
                     min="0"
                     value={variant.stock}
-                    onChange={(e) => updateVariant(variant.id, 'stock', e.target.value)}
+                    onChange={(e) =>
+                      updateVariant(variant.id, "stock", e.target.value)
+                    }
                     placeholder="50"
                     required
                   />
@@ -452,7 +470,9 @@ export default function NewListingPage() {
                     type="number"
                     min="0"
                     value={variant.weight}
-                    onChange={(e) => updateVariant(variant.id, 'weight', e.target.value)}
+                    onChange={(e) =>
+                      updateVariant(variant.id, "weight", e.target.value)
+                    }
                     placeholder="250"
                     required
                   />
@@ -479,10 +499,14 @@ export default function NewListingPage() {
             type="submit"
             disabled={loading || uploading || !producerId || !selectedBatch}
           >
-            {loading ? 'Creating...' : 'Create Listing'}
+            {loading ? "Creating..." : "Create Listing"}
           </Button>
           <Link href="/seller/listings">
-            <Button type="button" variant="outline" disabled={loading || uploading}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loading || uploading}
+            >
               Cancel
             </Button>
           </Link>
