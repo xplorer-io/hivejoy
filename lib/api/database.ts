@@ -111,6 +111,7 @@ function mapProduct(row: ProductRow, variants: ProductVariant[] = []): Product {
     photos: row.photos || [],
     status: row.status as Product['status'],
     variants,
+    // Optional fields - not in ProductRow schema, defaults provided
     reviewCount: 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

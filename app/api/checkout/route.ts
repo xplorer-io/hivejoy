@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
 import { mockProducts } from '@/lib/api/mock-data';
+import { getProduct } from '@/lib/api/database';
 import { registerCheckout } from '@/lib/stripe/checkout-store';
 import { createClient } from '@/lib/supabase/server';
 import {
@@ -12,6 +13,7 @@ import {
 } from '@/lib/db/orders';
 import type { CreateOrderInput } from '@/types/database';
 import type { CheckoutItem, CheckoutRequest } from '@/types/components';
+import type { Product, ProductVariant } from '@/types';
 
 function getStripeClient() {
   const apiKey = process.env.STRIPE_SECRET_KEY;
@@ -53,6 +55,62 @@ const resolveBaseUrl = () => {
 
 function isDbConfigured(): boolean {
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+/**
+ * Resolve a product and variant from database or mock data
+ * Tries database first, falls back to mock data if not configured or not found
+ */
+async function resolveProduct(
+  productId: string,
+  variantId: string
+): Promise<{ product: Product; variant: ProductVariant } | null> {
+  // Try database first
+  if (isDbConfigured()) {
+    try {
+      const dbProduct = await getProduct(productId);
+      if (dbProduct) {
+        // ProductWithDetails extends Product, so we can use it as Product
+        // But we need to ensure it has all required fields
+        if (!dbProduct.variants || dbProduct.variants.length === 0) {
+          console.warn(`Product ${productId} has no variants`);
+          // Fall through to mock data
+        } else {
+          const variant = dbProduct.variants.find((v) => v.id === variantId);
+          if (variant) {
+            // Validate variant has required fields
+            if (typeof variant.price !== 'number' || variant.price <= 0) {
+              console.error(`Invalid variant price for ${variantId}:`, variant.price);
+              return null;
+            }
+            return { product: dbProduct, variant };
+          } else {
+            console.warn(`Variant ${variantId} not found in product ${productId}`);
+            // Fall through to mock data
+          }
+        }
+      } else {
+        console.warn(`Product ${productId} not found in database`);
+        // Fall through to mock data
+      }
+    } catch (error) {
+      console.error('Failed to fetch product from database:', error);
+      // Fall through to mock data
+    }
+  }
+
+  // Fall back to mock data
+  const product = mockProducts.find((entry) => entry.id === productId);
+  if (!product) {
+    return null;
+  }
+
+  const variant = product.variants.find((entry) => entry.id === variantId);
+  if (!variant) {
+    return null;
+  }
+
+  return { product, variant };
 }
 
 export async function POST(request: NextRequest) {
@@ -102,42 +160,79 @@ export async function POST(request: NextRequest) {
 
     // Resolve products and build line items + group by seller
     const resolvedItems: {
-      product: (typeof mockProducts)[number];
-      variant: (typeof mockProducts)[number]['variants'][number];
+      product: Product;
+      variant: ProductVariant;
       quantity: number;
     }[] = [];
 
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map(
-      (item) => {
+    // Resolve all products first
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+    
+    for (const item of items) {
+      try {
         const productId = normalizeString(item.productId);
         const variantId = normalizeString(item.variantId);
         const quantity = Number(item.quantity);
-        const product = mockProducts.find((entry) => entry.id === productId);
-        const variant = product?.variants.find((entry) => entry.id === variantId);
 
-        if (!product || !variant) {
-          throw new Error('Invalid cart item');
+        const resolved = await resolveProduct(productId, variantId);
+        if (!resolved) {
+          console.error(`Product not found: productId=${productId}, variantId=${variantId}`);
+          throw new Error(`Invalid cart item: Product ${productId} or variant ${variantId} not found`);
         }
 
-        if (!Number.isInteger(quantity) || quantity <= 0 || quantity > variant.stock) {
-          throw new Error('Invalid quantity');
+        const { product, variant } = resolved;
+
+        // Validate product structure
+        if (!product || !product.title) {
+          console.error('Product missing title:', product);
+          throw new Error('Product missing required fields');
+        }
+        
+        if (!variant || !variant.size || typeof variant.price !== 'number') {
+          console.error('Invalid variant structure:', variant);
+          throw new Error('Invalid variant structure');
+        }
+
+        if (!Number.isInteger(quantity) || quantity <= 0) {
+          throw new Error(`Invalid quantity: ${quantity}`);
+        }
+
+        if (quantity > variant.stock) {
+          throw new Error(`Insufficient stock: requested ${quantity}, available ${variant.stock}`);
         }
 
         resolvedItems.push({ product, variant, quantity });
 
-        return {
+        const unitAmount = Math.round(variant.price * 100);
+        if (isNaN(unitAmount) || unitAmount <= 0) {
+          console.error('Invalid price:', variant.price, 'unitAmount:', unitAmount);
+          throw new Error(`Invalid price: ${variant.price}`);
+        }
+
+        // Ensure photos is an array
+        const photos = Array.isArray(product.photos) ? product.photos : [];
+        
+        lineItems.push({
           price_data: {
             currency: 'aud',
             product_data: {
               name: `${product.title} - ${variant.size}`,
-              ...(product.photos[0] && { images: [product.photos[0]] }),
+              ...(photos[0] && { images: [photos[0]] }),
             },
-            unit_amount: Math.round(variant.price * 100),
+            unit_amount: unitAmount,
           },
           quantity,
-        };
+        });
+      } catch (itemError) {
+        console.error('Error processing cart item:', itemError);
+        throw itemError;
       }
-    );
+    }
+
+    // Validate we have at least one line item
+    if (lineItems.length === 0) {
+      throw new Error('No valid items in cart');
+    }
 
     const shippingCost = 12.0;
 
@@ -326,11 +421,24 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Stripe checkout error:', error);
+    
+    // Log more details for debugging
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    
     const isClientError =
       error instanceof Error &&
       (error.message === 'Invalid cart item' || error.message === 'Invalid quantity');
     const status = isClientError ? 400 : 500;
-    const message = isClientError ? error.message : 'Failed to create checkout session';
+    
+    // Include more details in error message for debugging
+    const message = isClientError 
+      ? error.message 
+      : error instanceof Error 
+        ? `Failed to create checkout session: ${error.message}`
+        : 'Failed to create checkout session';
 
     return NextResponse.json({ error: message }, { status });
   }
