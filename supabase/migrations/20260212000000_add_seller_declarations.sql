@@ -7,7 +7,7 @@
 -- =============================================================
 
 CREATE TABLE IF NOT EXISTS public.seller_declarations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   producer_id UUID REFERENCES public.producers(id) ON DELETE CASCADE,
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE, -- Changed from profiles to users
   

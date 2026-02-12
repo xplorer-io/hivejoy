@@ -82,7 +82,7 @@ ALTER TABLE public.producers
 
 -- ==================== APPLICATION AUDIT LOG ====================
 CREATE TABLE IF NOT EXISTS public.producer_application_log (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   producer_id UUID REFERENCES public.producers(id) ON DELETE CASCADE,
   admin_id UUID REFERENCES public.users(id), -- Changed from profiles to users
   action TEXT NOT NULL CHECK (action IN ('submitted', 'approved', 'rejected', 'changes_requested', 'suspended', 'updated', 'resubmitted')),

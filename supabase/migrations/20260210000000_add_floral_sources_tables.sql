@@ -5,12 +5,9 @@
 -- many-to-many relationship table. Adapted from teammate's migration.
 -- =============================================================
 
--- Enable uuid-ossp extension if not already enabled (for uuid_generate_v4)
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- ==================== FLORAL SOURCES TAXONOMY ====================
 CREATE TABLE IF NOT EXISTS public.floral_sources (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
   scientific_name TEXT,
   region_exclusive BOOLEAN DEFAULT false, -- e.g., Manuka (Tasmania/NZ), Jellybush (NSW)
@@ -62,7 +59,7 @@ ON CONFLICT (name) DO NOTHING;
 
 -- ==================== PRODUCER FLORAL SOURCES (Many-to-Many) ====================
 CREATE TABLE IF NOT EXISTS public.producer_floral_sources (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   producer_id UUID NOT NULL REFERENCES public.producers(id) ON DELETE CASCADE,
   floral_source_id UUID REFERENCES public.floral_sources(id) ON DELETE CASCADE,
   other_floral_source TEXT, -- For "Other" option

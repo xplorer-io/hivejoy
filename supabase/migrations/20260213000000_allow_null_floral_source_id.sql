@@ -12,8 +12,29 @@ ALTER TABLE public.producer_floral_sources
 
 -- Update unique constraint to allow multiple NULL values (for different "other" sources)
 -- PostgreSQL allows multiple NULLs in unique constraints by default, but let's make it explicit
-DROP INDEX IF EXISTS producer_floral_sources_producer_id_floral_source_id_key;
-CREATE UNIQUE INDEX producer_floral_sources_producer_id_floral_source_id_key 
+-- Drop the existing unique constraint (it might be a constraint or index)
+DO $$
+BEGIN
+  -- Try dropping as constraint first
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'producer_floral_sources_producer_id_floral_source_id_key'
+  ) THEN
+    ALTER TABLE public.producer_floral_sources 
+    DROP CONSTRAINT IF EXISTS producer_floral_sources_producer_id_floral_source_id_key;
+  END IF;
+  
+  -- Try dropping as index if it exists
+  IF EXISTS (
+    SELECT 1 FROM pg_indexes 
+    WHERE indexname = 'producer_floral_sources_producer_id_floral_source_id_key'
+  ) THEN
+    DROP INDEX IF EXISTS producer_floral_sources_producer_id_floral_source_id_key;
+  END IF;
+END $$;
+
+-- Create a partial unique index that only applies when floral_source_id is NOT NULL
+CREATE UNIQUE INDEX IF NOT EXISTS producer_floral_sources_producer_id_floral_source_id_key 
   ON public.producer_floral_sources(producer_id, floral_source_id) 
   WHERE floral_source_id IS NOT NULL;
 
