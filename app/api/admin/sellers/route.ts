@@ -19,15 +19,40 @@ export async function GET() {
     }
 
     // Check if user is admin
-    const { data: profile } = await supabase
+    // Try with regular client first, fallback to admin client if RLS blocks
+    let { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single();
 
+    // If RLS blocks the query, use admin client to check role
+    if (profileError || !profile) {
+      const adminClient = createAdminClient();
+      if (adminClient) {
+        const adminProfileResult = await adminClient
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        profile = adminProfileResult.data;
+        profileError = adminProfileResult.error;
+      }
+    }
+
     if (!profile || (profile as { role?: string }).role !== 'admin') {
+      console.error('Admin check failed:', {
+        hasProfile: !!profile,
+        role: profile ? (profile as { role?: string }).role : 'none',
+        userId: user.id,
+        profileError: profileError?.message,
+      });
       return NextResponse.json(
-        { success: false, error: 'Admin access required' },
+        { 
+          success: false, 
+          error: 'Admin access required',
+          details: profileError?.message || 'User role is not admin'
+        },
         { status: 403 }
       );
     }
