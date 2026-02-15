@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getProducerByUserId } from '@/lib/api/database';
 
 /**
@@ -18,16 +19,147 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if user already has a producer profile
-    const existingProducer = await getProducerByUserId(user.id);
-    if (existingProducer) {
-      return NextResponse.json(
-        { success: false, error: 'You already have a producer profile. Please update your existing profile instead.' },
-        { status: 400 }
-      );
+    const body = await request.json();
+
+    // Ensure user has a profile (required for foreign key constraint)
+    const { data: existingProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email, role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    // If profile doesn't exist, create it using admin client to bypass RLS
+    if (!existingProfile) {
+      const userEmail = user.email || body?.primaryEmail || '';
+      
+      if (!userEmail) {
+        return NextResponse.json(
+          { success: false, error: 'Email is required. Please ensure you are signed in with a valid email address.' },
+          { status: 400 }
+        );
+      }
+
+      // Use admin client to bypass RLS for profile creation
+      const adminClient = createAdminClient();
+      
+      if (!adminClient) {
+        // Fallback: try with regular client (might work if RLS policy allows)
+        const { data: newProfile, error: createProfileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: userEmail,
+            role: 'consumer',
+            status: 'active',
+          })
+          .select()
+          .single();
+
+        if (createProfileError) {
+          // Check if it's a conflict error (profile already exists)
+          if (createProfileError.code === '23505' || createProfileError.message?.includes('duplicate') || createProfileError.message?.includes('unique')) {
+            // Profile was created by trigger or another process, continue
+            console.log('Profile already exists (likely created by trigger), continuing...');
+          } else {
+            console.error('Error creating profile:', createProfileError);
+            return NextResponse.json(
+              { 
+                success: false, 
+                error: `Failed to create user profile: ${createProfileError.message || 'Unknown error'}. Please try again or contact support.` 
+              },
+              { status: 500 }
+            );
+          }
+        } else if (!newProfile) {
+          // Verify it exists now
+          const { data: verifyProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          if (!verifyProfile) {
+            return NextResponse.json(
+              { success: false, error: 'Failed to create user profile. Please try again or contact support.' },
+              { status: 500 }
+            );
+          }
+        }
+      } else {
+        // Use admin client to create profile (bypasses RLS)
+        const { data: newProfile, error: createProfileError } = await adminClient
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: userEmail,
+            role: 'consumer',
+            status: 'active',
+          })
+          .select()
+          .single();
+
+        if (createProfileError) {
+          // Check if it's a conflict error (profile already exists)
+          if (createProfileError.code === '23505' || createProfileError.message?.includes('duplicate') || createProfileError.message?.includes('unique')) {
+            // Profile was created by trigger or another process, continue
+            console.log('Profile already exists (likely created by trigger), continuing...');
+          } else {
+            console.error('Error creating profile with admin client:', createProfileError);
+            return NextResponse.json(
+              { 
+                success: false, 
+                error: `Failed to create user profile: ${createProfileError.message || 'Unknown error'}. Please try again or contact support.` 
+              },
+              { status: 500 }
+            );
+          }
+        } else if (!newProfile) {
+          // Verify it exists now
+          const { data: verifyProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          if (!verifyProfile) {
+            return NextResponse.json(
+              { success: false, error: 'Failed to create user profile. Please try again or contact support.' },
+              { status: 500 }
+            );
+          }
+        }
+      }
     }
 
-    const body = await request.json();
+    // Check if user already has a producer profile
+    // Allow new applications if the existing producer is rejected
+    const existingProducer = await getProducerByUserId(user.id);
+    let isRejectedApplication = false;
+    let existingProducerId: string | null = null;
+    
+    if (existingProducer) {
+      // Check the application_status directly from the database
+      const { data: producerData, error: producerError } = await supabase
+        .from('producers')
+        .select('id, application_status, verification_status')
+        .eq('user_id', user.id)
+        .single();
+      
+      // If the application is rejected, allow them to submit a new application
+      // Otherwise, they should update their existing profile
+      if (producerData) {
+        if (producerData.application_status !== 'rejected' && 
+            producerData.verification_status !== 'rejected') {
+          return NextResponse.json(
+            { success: false, error: 'You already have a producer profile. Please update your existing profile instead.' },
+            { status: 400 }
+          );
+        }
+        // If rejected, we'll update the existing producer record
+        isRejectedApplication = true;
+        existingProducerId = producerData.id;
+      }
+    }
 
     // Validate required fields
     const requiredFields = [
@@ -49,7 +181,6 @@ export async function POST(request: Request) {
       'typicalHarvestMonths',
       'foodSafetyCompliant',
       'declarationComplianceDocuments',
-      'bio',
     ];
 
     for (const field of requiredFields) {
@@ -78,8 +209,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate bio length
-    if (body.bio.trim().length < 100 || body.bio.trim().length > 300) {
+    // Validate bio length if provided (optional field)
+    if (body.bio && body.bio.trim() && (body.bio.trim().length < 100 || body.bio.trim().length > 300)) {
       return NextResponse.json(
         { success: false, error: 'Bio must be between 100 and 300 words.' },
         { status: 400 }
@@ -109,7 +240,7 @@ export async function POST(request: Request) {
       state: body.physicalAddress.state,
       postcode: body.physicalAddress.postcode.trim(),
       country: 'Australia',
-      bio: body.bio.trim(),
+      bio: body.bio?.trim() || null,
       profile_image: body.profileImageUrl || null,
       cover_image: body.farmPhotoUrls?.[0] || null,
       verification_status: 'pending',
@@ -205,17 +336,29 @@ export async function POST(request: Request) {
         state: body.physicalAddress.state,
         postcode: body.physicalAddress.postcode.trim(),
         country: 'Australia',
-        bio: body.bio.trim(),
+        bio: body.bio?.trim() || null,
         profile_image: body.profileImageUrl || null,
         cover_image: body.farmPhotoUrls?.[0] || null,
         verification_status: 'pending',
       };
       
-      const retryResult = await supabase
-        .from('producers')
-        .insert(baseProducerData)
-        .select()
-        .single();
+      let retryResult;
+      if (isRejectedApplication && existingProducerId) {
+        // Update existing record
+        retryResult = await supabase
+          .from('producers')
+          .update(baseProducerData)
+          .eq('id', existingProducerId)
+          .select()
+          .single();
+      } else {
+        // Insert new record
+        retryResult = await supabase
+          .from('producers')
+          .insert(baseProducerData)
+          .select()
+          .single();
+      }
       
       if (retryResult.error) {
         console.error('Error creating producer with base columns:', retryResult.error);
@@ -230,6 +373,20 @@ export async function POST(request: Request) {
       
       producer = retryResult.data;
       producerError = null;
+      
+      // If we used base columns, try to update with application_status if the column exists
+      try {
+        await supabase
+          .from('producers')
+          .update({
+            application_status: 'pending_review',
+            application_submitted_at: new Date().toISOString(),
+          })
+          .eq('id', producer.id);
+      } catch (updateError) {
+        // Column doesn't exist, that's okay - migration needs to be run
+        console.warn('Could not update application_status - migration may not be run:', updateError);
+      }
     } else if (producerError) {
       console.error('Error creating producer:', producerError);
       return NextResponse.json(
@@ -239,6 +396,14 @@ export async function POST(request: Request) {
     }
 
     // Link floral sources
+    // If this is a rejected application resubmission, delete old floral source links first
+    if (isRejectedApplication && existingProducerId) {
+      await supabase
+        .from('producer_floral_sources')
+        .delete()
+        .eq('producer_id', existingProducerId);
+    }
+    
     if (body.floralSourceIds && body.floralSourceIds.length > 0) {
       const floralSourceLinks = body.floralSourceIds
         .filter((floralId: string) => floralId !== 'other') // Filter out 'other' string
@@ -320,7 +485,7 @@ export async function POST(request: Request) {
             postcode: body.physicalAddress.postcode.trim(),
             country: 'Australia',
           },
-          bio: body.bio.trim(),
+          bio: body.bio?.trim() || '',
           producerId: producer.id,
           userId: user.id,
           fullLegalName: body.fullLegalName.trim(),

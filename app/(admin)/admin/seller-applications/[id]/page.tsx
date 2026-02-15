@@ -11,7 +11,17 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, XCircle, ChevronLeft, FileText, MapPin, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle, ChevronLeft, FileText, MapPin, AlertCircle, Ban, ShieldOff, Shield } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import Image from 'next/image';
 
 interface ProducerData {
@@ -73,6 +83,7 @@ interface ProducerData {
   country?: string;
   profiles?: {
     email?: string;
+    status?: 'active' | 'suspended' | 'banned';
   };
 }
 
@@ -114,6 +125,13 @@ export default function SellerApplicationDetailPage() {
   const [processing, setProcessing] = useState(false);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [sellerActionDialog, setSellerActionDialog] = useState<{
+    open: boolean;
+    action: 'suspend' | 'ban' | 'reactivate' | null;
+  }>({
+    open: false,
+    action: null,
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -138,7 +156,7 @@ export default function SellerApplicationDetailPage() {
     fetchData();
   }, [applicationId]);
 
-  const handleAction = async (action: 'approve' | 'reject' | 'request_changes') => {
+  const handleAction = async (action: 'approve' | 'reject') => {
     if (action === 'reject' && !notes.trim()) {
       setError('Please provide a reason for rejection');
       return;
@@ -171,6 +189,43 @@ export default function SellerApplicationDetailPage() {
     } catch (err) {
       console.error('Failed to process application:', err);
       setError('Failed to process application. Please try again.');
+      setProcessing(false);
+    }
+  };
+
+  const handleSellerAction = async (action: 'suspend' | 'ban' | 'reactivate') => {
+    if (!data?.producer?.id) return;
+
+    setProcessing(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/sellers/${data.producer.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setError(result.error || 'Failed to update seller status');
+        setProcessing(false);
+        return;
+      }
+
+      // Refresh data
+      const refreshResponse = await fetch(`/api/admin/seller-applications/${applicationId}`);
+      const refreshResult = await refreshResponse.json();
+      if (refreshResult.success && refreshResult.application) {
+        setData(refreshResult.application);
+      }
+
+      setSellerActionDialog({ open: false, action: null });
+    } catch (err) {
+      console.error('Failed to update seller status:', err);
+      setError('Failed to update seller status. Please try again.');
+    } finally {
       setProcessing(false);
     }
   };
@@ -642,14 +697,14 @@ export default function SellerApplicationDetailPage() {
       </Card>
 
       {/* Decision Section */}
-      {status === 'pending_review' || status === 'changes_requested' ? (
+      {status === 'pending_review' ? (
         <Card>
           <CardHeader>
             <CardTitle>Your Decision</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes {status === 'changes_requested' ? '(Optional)' : '(Required for rejection)'}</Label>
+              <Label htmlFor="notes">Notes (Required for rejection)</Label>
               <Textarea
                 id="notes"
                 value={notes}
@@ -671,16 +726,8 @@ export default function SellerApplicationDetailPage() {
                 {processing ? 'Processing...' : 'Approve'}
               </Button>
               <Button
-                onClick={() => handleAction('request_changes')}
-                disabled={processing}
-                variant="outline"
-                className="gap-2"
-              >
-                Request Changes
-              </Button>
-              <Button
                 onClick={() => handleAction('reject')}
-                disabled={processing}
+                disabled={processing || !notes.trim()}
                 variant="destructive"
                 className="gap-2"
               >
@@ -695,13 +742,61 @@ export default function SellerApplicationDetailPage() {
           <CardHeader>
             <CardTitle>Application Status</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <p className="text-muted-foreground">
               This application has been {status === 'approved' ? 'approved' : 'rejected'}.
               {producer.rejection_reason && status === 'rejected' && (
                 <span className="block mt-2">Reason: {producer.rejection_reason}</span>
               )}
             </p>
+            
+            {status === 'approved' && (
+              <div className="pt-4 border-t">
+                <Label className="text-muted-foreground mb-3 block">Seller Management</Label>
+                <div className="flex gap-2">
+                  {producer.profiles?.status === 'active' ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSellerActionDialog({ open: true, action: 'suspend' })}
+                        disabled={processing}
+                        className="gap-2"
+                      >
+                        <ShieldOff className="h-4 w-4" />
+                        Suspend Seller
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setSellerActionDialog({ open: true, action: 'ban' })}
+                        disabled={processing}
+                        className="gap-2"
+                      >
+                        <Ban className="h-4 w-4" />
+                        Ban Seller
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSellerActionDialog({ open: true, action: 'reactivate' })}
+                      disabled={processing}
+                      className="gap-2"
+                    >
+                      <Shield className="h-4 w-4" />
+                      Reactivate Seller
+                    </Button>
+                  )}
+                </div>
+                {producer.profiles?.status && producer.profiles.status !== 'active' && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Current status: <span className="font-medium capitalize">{producer.profiles.status}</span>
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -727,6 +822,52 @@ export default function SellerApplicationDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Seller Action Dialog */}
+      <AlertDialog
+        open={sellerActionDialog.open}
+        onOpenChange={(open) => setSellerActionDialog({ ...sellerActionDialog, open })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {sellerActionDialog.action === 'suspend'
+                ? 'Suspend Seller'
+                : sellerActionDialog.action === 'ban'
+                ? 'Ban Seller'
+                : 'Reactivate Seller'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {sellerActionDialog.action === 'suspend'
+                ? `Are you sure you want to suspend ${producer.business_name}? They will not be able to access their seller account or create new listings.`
+                : sellerActionDialog.action === 'ban'
+                ? `Are you sure you want to ban ${producer.business_name}? This action is permanent and they will not be able to access their account.`
+                : `Are you sure you want to reactivate ${producer.business_name}? They will regain access to their seller account.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                sellerActionDialog.action && handleSellerAction(sellerActionDialog.action)
+              }
+              className={
+                sellerActionDialog.action === 'ban'
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : sellerActionDialog.action === 'suspend'
+                  ? 'bg-orange-600 hover:bg-orange-700'
+                  : ''
+              }
+            >
+              {sellerActionDialog.action === 'suspend'
+                ? 'Suspend'
+                : sellerActionDialog.action === 'ban'
+                ? 'Ban'
+                : 'Reactivate'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

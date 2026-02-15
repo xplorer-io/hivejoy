@@ -44,7 +44,8 @@ export async function GET(
         profiles:user_id (
           id,
           email,
-          role
+          role,
+          status
         )
       `)
       .eq('id', id)
@@ -131,11 +132,11 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { action, notes } = body; // action: 'approve' | 'reject' | 'request_changes'
+    const { action, notes } = body; // action: 'approve' | 'reject'
 
-    if (!action || !['approve', 'reject', 'request_changes'].includes(action)) {
+    if (!action || !['approve', 'reject'].includes(action)) {
       return NextResponse.json(
-        { success: false, error: 'Invalid action. Must be approve, reject, or request_changes' },
+        { success: false, error: 'Invalid action. Must be approve or reject' },
         { status: 400 }
       );
     }
@@ -154,7 +155,7 @@ export async function PATCH(
       );
     }
 
-    const previousStatus = (currentProducer as { application_status?: string }).application_status;
+    const previousStatus = (currentProducer as { application_status?: string })?.application_status || null;
     let newStatus: string;
     let updateData: Record<string, string | boolean | string[] | null | undefined> = {};
 
@@ -166,7 +167,8 @@ export async function PATCH(
         approved_by: user.id,
         verification_status: 'approved',
       };
-    } else if (action === 'reject') {
+    } else {
+      // reject
       newStatus = 'rejected';
       updateData = {
         application_status: 'rejected',
@@ -174,13 +176,6 @@ export async function PATCH(
         rejected_by: user.id,
         rejection_reason: notes || 'Application rejected by admin',
         verification_status: 'rejected',
-      };
-    } else {
-      // request_changes
-      newStatus = 'changes_requested';
-      updateData = {
-        application_status: 'changes_requested',
-        changes_requested_fields: body.fields || [],
       };
     }
 
@@ -206,12 +201,67 @@ export async function PATCH(
       .insert({
         producer_id: id,
         admin_id: user.id,
-        action: action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'changes_requested',
+        action: action === 'approve' ? 'approved' : 'rejected',
         previous_status: previousStatus,
         new_status: newStatus,
         notes: notes || undefined,
         changed_fields: body.fields || undefined,
       });
+
+    // Send email notification to seller
+    try {
+      const { data: producerData } = await supabase
+        .from('producers')
+        .select('user_id, business_name, primary_email')
+        .eq('id', id)
+        .single();
+
+      if (producerData) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', (producerData as { user_id: string }).user_id)
+          .single();
+
+        const sellerEmail = (producerData as { primary_email?: string }).primary_email || 
+                           (profileData as { email?: string })?.email;
+
+        console.log('Attempting to send email notification:', {
+          action,
+          sellerEmail,
+          businessName: (producerData as { business_name: string }).business_name,
+          hasNotes: !!notes,
+        });
+
+        if (sellerEmail) {
+          const { sendApplicationStatusUpdateEmail } = await import('@/lib/sendgrid/email');
+          // Convert action to email format: 'approve' -> 'approved', 'reject' -> 'rejected'
+          const emailAction: 'approved' | 'rejected' = action === 'approve' ? 'approved' : 'rejected';
+          console.log('Sending email with action:', emailAction, 'Original action:', action);
+          const emailResult = await sendApplicationStatusUpdateEmail({
+            businessName: (producerData as { business_name: string }).business_name,
+            email: sellerEmail,
+            action: emailAction,
+            notes: notes || undefined,
+            changedFields: body.fields || undefined,
+            applicationId: id,
+          });
+          
+          if (emailResult.success) {
+            console.log('Email notification sent successfully to:', sellerEmail);
+          } else {
+            console.error('Failed to send email notification:', emailResult.error);
+          }
+        } else {
+          console.warn('No seller email found. Producer data:', producerData, 'Profile data:', profileData);
+        }
+      } else {
+        console.warn('Producer data not found for application ID:', id);
+      }
+    } catch (emailError) {
+      console.error('Error sending email notification:', emailError);
+      // Don't fail the request if email fails
+    }
 
     // If approved, update user role to producer
     if (action === 'approve') {

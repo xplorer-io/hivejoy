@@ -32,7 +32,9 @@ export async function GET() {
     }
 
     // Fetch all producers with pending_review status
-    const { data: applications, error } = await supabase
+    // Also include NULL application_status (for applications created before migration)
+    // Also include any producer with verification_status = 'pending' (legacy check)
+    const { data: allProducers, error: allError } = await supabase
       .from('producers')
       .select(`
         *,
@@ -42,16 +44,32 @@ export async function GET() {
           role
         )
       `)
-      .in('application_status', ['pending_review', 'changes_requested'])
-      .order('application_submitted_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching seller applications:', error);
+    if (allError) {
+      console.error('Error fetching all producers:', allError);
       return NextResponse.json(
-        { success: false, error: 'Failed to fetch applications' },
+        { success: false, error: 'Failed to fetch applications', details: allError.message },
         { status: 500 }
       );
     }
+
+    // Filter to only pending applications
+    const applications = (allProducers || []).filter((producer: any) => {
+      const appStatus = producer.application_status;
+      const verStatus = producer.verification_status;
+      
+      // Include if:
+      // 1. application_status is 'pending_review' or 'changes_requested'
+      // 2. application_status is NULL and verification_status is 'pending' (legacy)
+      // 3. application_status is NULL and no verification_status set (new applications)
+      return (
+        appStatus === 'pending_review' ||
+        appStatus === 'changes_requested' ||
+        (appStatus === null && verStatus === 'pending') ||
+        (appStatus === null && !verStatus)
+      );
+    });
 
     return NextResponse.json({
       success: true,

@@ -42,7 +42,7 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-type FormStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+type FormStep = 1 | 2 | 3 | 4 | 5 | 6;
 
 export default function SellerRegisterNewPage() {
   const router = useRouter();
@@ -55,6 +55,8 @@ export default function SellerRegisterNewPage() {
   const [floralSources, setFloralSources] = useState<FloralSource[]>([]);
   const [isVerifiedSeller, setIsVerifiedSeller] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
+  const [existingProducerId, setExistingProducerId] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Step 1: Identity
   const [fullLegalName, setFullLegalName] = useState('');
@@ -111,15 +113,6 @@ export default function SellerRegisterNewPage() {
   const [foodHandlingRegNumber, setFoodHandlingRegNumber] = useState('');
   const [localCouncilAuthority, setLocalCouncilAuthority] = useState('');
   const [declarationComplianceDocs, setDeclarationComplianceDocs] = useState(false);
-
-  // Step 7: Payout Details (can be filled post-approval)
-  const [bankAccountName, setBankAccountName] = useState('');
-  const [bankBSB, setBankBSB] = useState('');
-  const [bankAccountNumber, setBankAccountNumber] = useState('');
-  const [gstRegistered, setGstRegistered] = useState(false);
-  const [gstIncludedInPricing, setGstIncludedInPricing] = useState(false);
-
-  // Step 8: Public Profile & Final Declarations
   const [bio, setBio] = useState('');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
   const [farmPhotos, setFarmPhotos] = useState<File[]>([]);
@@ -167,7 +160,7 @@ export default function SellerRegisterNewPage() {
     }
   }, [user]);
 
-  // Check if user is already a verified seller
+  // Check if user is already a verified seller and load existing application data
   useEffect(() => {
     async function checkSellerStatus() {
       if (!user) {
@@ -181,8 +174,106 @@ export default function SellerRegisterNewPage() {
         
         if (data.success && data.producer) {
           const verificationStatus = data.producer.verificationStatus;
+          const applicationStatus = data.producer.applicationStatus;
+          
           if (verificationStatus === 'approved') {
             setIsVerifiedSeller(true);
+          }
+          
+          // If application is pending or changes requested, load full application data
+          // Don't load for rejected applications - allow them to start fresh
+          if ((applicationStatus === 'pending_review' || applicationStatus === 'changes_requested' || 
+              (!applicationStatus && verificationStatus === 'pending')) &&
+              applicationStatus !== 'rejected' && verificationStatus !== 'rejected') {
+            try {
+              const appResponse = await fetch('/api/producers/my-application');
+              const appData = await appResponse.json();
+              
+              if (appData.success && appData.application && appData.application.producer) {
+                const producer = appData.application.producer;
+                setExistingProducerId(producer.id);
+                setIsUpdating(true);
+                
+                // Pre-fill all form fields with existing data
+                // Step 1: Identity
+                if (producer.full_legal_name) setFullLegalName(producer.full_legal_name);
+                if (producer.business_name) setBusinessName(producer.business_name);
+                if (producer.seller_type) setSellerType(producer.seller_type as 'individual' | 'registered_business');
+                if (producer.abn) {
+                  setAbn(producer.abn);
+                  setAbnConfirmed(true);
+                }
+                if (producer.trading_name) setTradingName(producer.trading_name);
+                if (producer.website) setWebsite(producer.website);
+                if (producer.social_profile) setSocialProfile(producer.social_profile);
+                
+                // Step 2: Contact
+                if (producer.primary_email) setPrimaryEmail(producer.primary_email);
+                if (producer.phone_number) setPhoneNumber(producer.phone_number);
+                if (producer.secondary_contact_name) setSecondaryContactName(producer.secondary_contact_name);
+                if (producer.secondary_phone) setSecondaryPhone(producer.secondary_phone);
+                if (producer.secondary_email) setSecondaryEmail(producer.secondary_email);
+                
+                // Step 3: Address
+                if (producer.physical_address_street) setPhysicalStreet(producer.physical_address_street);
+                if (producer.physical_address_suburb) setPhysicalSuburb(producer.physical_address_suburb);
+                if (producer.physical_address_state) setPhysicalState(producer.physical_address_state);
+                if (producer.physical_address_postcode) setPhysicalPostcode(producer.physical_address_postcode);
+                if (producer.shipping_address_different) setShippingDifferent(producer.shipping_address_different);
+                if (producer.shipping_address_street) setShippingStreet(producer.shipping_address_street);
+                if (producer.shipping_address_suburb) setShippingSuburb(producer.shipping_address_suburb);
+                if (producer.shipping_address_state) setShippingState(producer.shipping_address_state);
+                if (producer.shipping_address_postcode) setShippingPostcode(producer.shipping_address_postcode);
+                
+                // Step 4: Beekeeper Verification
+                if (producer.is_registered_beekeeper !== undefined) setIsRegisteredBeekeeper(producer.is_registered_beekeeper);
+                if (producer.beekeeper_registration_number) setBeekeeperRegNumber(producer.beekeeper_registration_number);
+                if (producer.registering_authority) setRegisteringAuthority(producer.registering_authority);
+                if (producer.registering_authority_other) setRegisteringAuthorityOther(producer.registering_authority_other);
+                if (producer.registration_proof_url) setRegistrationProofUrl(producer.registration_proof_url);
+                if (producer.apiary_photo_url) setApiaryPhotoUrl(producer.apiary_photo_url);
+                if (producer.declaration_hive_owner !== undefined) setDeclarationHiveOwner(producer.declaration_hive_owner);
+                if (producer.declaration_own_hives !== undefined) setDeclarationOwnHives(producer.declaration_own_hives);
+                if (producer.declaration_no_imported !== undefined) setDeclarationNoImported(producer.declaration_no_imported);
+                if (producer.declaration_raw_natural !== undefined) setDeclarationRawNatural(producer.declaration_raw_natural);
+                
+                // Step 5: Production
+                if (producer.number_of_hives) setNumberOfHives(producer.number_of_hives.toString());
+                if (producer.harvest_regions && Array.isArray(producer.harvest_regions)) {
+                  setHarvestRegions(producer.harvest_regions);
+                }
+                if (producer.typical_harvest_months && Array.isArray(producer.typical_harvest_months)) {
+                  setTypicalHarvestMonths(producer.typical_harvest_months);
+                }
+                if (producer.extraction_method) setExtractionMethod(producer.extraction_method);
+                if (producer.certifications && Array.isArray(producer.certifications)) {
+                  setCertifications(producer.certifications);
+                }
+                
+                // Load floral sources
+                if (appData.application.floralSources && Array.isArray(appData.application.floralSources)) {
+                  const floralSourceIds = appData.application.floralSources
+                    .map((fs: any) => fs.floral_source_id)
+                    .filter((id: string) => id !== null);
+                  setSelectedFloralSources(floralSourceIds);
+                  
+                  // Check for "other" floral source
+                  const otherSource = appData.application.floralSources.find((fs: any) => fs.other_floral_source);
+                  if (otherSource) {
+                    setSelectedFloralSources([...floralSourceIds, 'other']);
+                    setOtherFloralSource(otherSource.other_floral_source);
+                  }
+                }
+                
+                // Step 6: Compliance
+                if (producer.food_safety_compliant !== undefined) setFoodSafetyCompliant(producer.food_safety_compliant);
+                if (producer.food_handling_registration_number) setFoodHandlingRegNumber(producer.food_handling_registration_number);
+                if (producer.local_council_authority) setLocalCouncilAuthority(producer.local_council_authority);
+                if (producer.declaration_compliance_docs !== undefined) setDeclarationComplianceDocs(producer.declaration_compliance_docs);
+              }
+            } catch (appErr) {
+              console.error('Failed to load application data:', appErr);
+            }
           }
         }
       } catch (err) {
@@ -195,7 +286,7 @@ export default function SellerRegisterNewPage() {
     checkSellerStatus();
   }, [user]);
 
-  const totalSteps = 7;
+  const totalSteps = 6;
   const progress = (currentStep / totalSteps) * 100;
 
   const canProceedToNextStep = () => {
@@ -220,8 +311,6 @@ export default function SellerRegisterNewPage() {
                harvestRegions.length > 0 && typicalHarvestMonths.length > 0;
       case 6:
         return foodSafetyCompliant && declarationComplianceDocs;
-      case 7:
-        return true; // Optional, can be filled later
       default:
         return false;
     }
@@ -284,10 +373,18 @@ export default function SellerRegisterNewPage() {
         .catch(() => undefined);
       const userAgent = typeof window !== 'undefined' ? window.navigator.userAgent : undefined;
 
-      const response = await fetch('/api/producers/register-comprehensive', {
-        method: 'POST',
+      // Determine if this is an update or new application
+      const isUpdate = isUpdating && existingProducerId;
+      const endpoint = isUpdate 
+        ? '/api/producers/update-application'
+        : '/api/producers/register-comprehensive';
+      const method = isUpdate ? 'PATCH' : 'POST';
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          ...(isUpdate && { producerId: existingProducerId }),
           // Identity
           fullLegalName: fullLegalName.trim(),
           businessName: businessName.trim(),
@@ -347,13 +444,6 @@ export default function SellerRegisterNewPage() {
           localCouncilAuthority: localCouncilAuthority.trim() || undefined,
           declarationComplianceDocuments: declarationComplianceDocs,
 
-          // Payout (optional for now)
-          bankAccountName: bankAccountName.trim() || undefined,
-          bankBSB: bankBSB.trim() || undefined,
-          bankAccountNumber: bankAccountNumber.trim() || undefined,
-          gstRegistered,
-          gstIncludedInPricing,
-
           // Profile (optional - can be added later)
           bio: bio.trim() || undefined,
           profileImageUrl: profilePhotoUrl || undefined,
@@ -371,8 +461,12 @@ export default function SellerRegisterNewPage() {
         throw new Error(data.error || 'Failed to submit application');
       }
 
-      // Success - redirect to dashboard
-      router.push('/seller/dashboard?application=submitted');
+      // Success - redirect based on action
+      if (isUpdating && existingProducerId) {
+        router.push('/seller/apply?updated=true');
+      } else {
+        router.push('/seller/dashboard?application=submitted');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit application. Please try again.');
     } finally {
@@ -1187,81 +1281,6 @@ export default function SellerRegisterNewPage() {
               </div>
             )}
 
-            {/* Step 7: Payout & Commercial Details */}
-            {currentStep === 7 && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">G. Payout & Commercial Details</h3>
-                  <Alert className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      This information can be provided now or after approval. It&apos;s required before you can receive payouts.
-                    </AlertDescription>
-                  </Alert>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="bankAccountName">Bank Account Name</Label>
-                      <Input
-                        id="bankAccountName"
-                        value={bankAccountName}
-                        onChange={(e) => setBankAccountName(e.target.value)}
-                        placeholder="Account holder name"
-                      />
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="bankBSB">BSB</Label>
-                        <Input
-                          id="bankBSB"
-                          value={bankBSB}
-                          onChange={(e) => setBankBSB(e.target.value)}
-                          placeholder="000-000"
-                          maxLength={6}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="bankAccountNumber">Account Number</Label>
-                        <Input
-                          id="bankAccountNumber"
-                          value={bankAccountNumber}
-                          onChange={(e) => setBankAccountNumber(e.target.value)}
-                          placeholder="Account number"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 pt-4 border-t">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="gstRegistered"
-                          checked={gstRegistered}
-                          onCheckedChange={(checked) => setGstRegistered(checked === true)}
-                        />
-                        <Label htmlFor="gstRegistered" className="cursor-pointer">
-                          Are you GST registered?
-                        </Label>
-                      </div>
-
-                      {gstRegistered && (
-                        <div className="flex items-center gap-2 ml-6">
-                          <Checkbox
-                            id="gstIncludedInPricing"
-                            checked={gstIncludedInPricing}
-                            onCheckedChange={(checked) => setGstIncludedInPricing(checked === true)}
-                          />
-                          <Label htmlFor="gstIncludedInPricing" className="text-sm cursor-pointer">
-                            GST is included in my pricing
-                          </Label>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-
             {currentStep < totalSteps && (
               <div className="flex justify-between mt-8">
                 <Button
@@ -1299,7 +1318,9 @@ export default function SellerRegisterNewPage() {
                   onClick={handleSubmit}
                   disabled={!canProceedToNextStep() || loading || uploading}
                 >
-                  {loading ? 'Submitting...' : 'Submit Application'}
+                  {loading 
+                    ? (isUpdating ? 'Updating...' : 'Submitting...') 
+                    : (isUpdating ? 'Update Application' : 'Submit Application')}
                 </Button>
               </div>
             )}

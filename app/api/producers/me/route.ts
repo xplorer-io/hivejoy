@@ -19,7 +19,13 @@ export async function GET() {
     // Get the most recent producer for this user (same fix as batches)
     const { data: producersData, error: producersError } = await supabase
       .from('producers')
-      .select('*')
+      .select(`
+        *,
+        profiles:user_id (
+          id,
+          status
+        )
+      `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -33,6 +39,7 @@ export async function GET() {
     }
 
     // Map to ProducerProfile format
+    const profileStatus = (producersData as { profiles?: { status?: string } })?.profiles?.status || 'active';
     const producer = {
       id: producersData.id,
       userId: producersData.user_id,
@@ -49,9 +56,11 @@ export async function GET() {
       profileImage: producersData.profile_image || undefined,
       coverImage: producersData.cover_image || undefined,
       verificationStatus: producersData.verification_status as 'pending' | 'submitted' | 'under_review' | 'approved' | 'rejected',
+      applicationStatus: (producersData as { application_status?: string })?.application_status || undefined,
       badgeLevel: producersData.badge_level as 'none' | 'verified' | 'premium',
       createdAt: producersData.created_at,
       updatedAt: producersData.updated_at,
+      profileStatus: profileStatus as 'active' | 'suspended' | 'banned',
     };
 
     return NextResponse.json({ success: true, producer });

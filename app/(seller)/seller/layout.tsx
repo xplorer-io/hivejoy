@@ -83,6 +83,7 @@ export default function SellerLayout({
 }) {
   const { user } = useAuthStore();
   const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
+  const [profileStatus, setProfileStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -108,9 +109,12 @@ export default function SellerLayout({
             // Check application_status (new field) or verification_status (legacy)
             const status = data.producer.application_status || data.producer.verificationStatus;
             setVerificationStatus(status);
+            // Check profile status (active, suspended, banned)
+            setProfileStatus(data.producer.profileStatus || 'active');
           } else {
             // No producer profile - needs to register
             setVerificationStatus('not_registered');
+            setProfileStatus(null);
           }
         }
       } catch (error) {
@@ -181,6 +185,27 @@ export default function SellerLayout({
           </Link>
           <Link href="/">
             <Button variant="outline">Return to Store</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Check profile status - block suspended/banned sellers
+  if (!loading && profileStatus && (profileStatus === 'suspended' || profileStatus === 'banned')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <h1 className="text-2xl font-bold mb-2">
+            {profileStatus === 'suspended' ? 'Account Suspended' : 'Account Banned'}
+          </h1>
+          <p className="text-muted-foreground mb-4">
+            {profileStatus === 'suspended'
+              ? 'Your seller account has been suspended. Please contact support for more information.'
+              : 'Your seller account has been banned. Please contact support if you believe this is an error.'}
+          </p>
+          <Link href="/">
+            <Button>Return to Store</Button>
           </Link>
         </div>
       </div>

@@ -389,6 +389,169 @@ User ID: ${data.userId}
   }
 }
 
+export interface ApplicationStatusUpdateEmailData {
+  businessName: string;
+  email: string;
+  action: 'approved' | 'rejected' | 'changes_requested';
+  notes?: string;
+  changedFields?: string[];
+  applicationId: string;
+}
+
+/**
+ * Send email notification to seller when their application status changes
+ */
+export async function sendApplicationStatusUpdateEmail(
+  data: ApplicationStatusUpdateEmailData
+): Promise<{ success: boolean; error?: string }> {
+  if (!process.env.SENDGRID_API_KEY) {
+    console.warn('SendGrid API key is not configured. Email notification skipped.');
+    return { success: false, error: 'SendGrid API key is not configured' };
+  }
+
+  if (!data.email) {
+    console.warn('Seller email is not provided. Email notification skipped.');
+    return { success: false, error: 'Seller email is not provided' };
+  }
+
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    let subject = '';
+    let title = '';
+    let message = '';
+    let actionText = '';
+    let actionUrl = '';
+    let bgColor = '';
+
+    console.log('Email function received action:', data.action, 'Type:', typeof data.action, 'Full data:', JSON.stringify(data));
+
+    // Normalize action value to handle any case variations or unexpected values
+    const normalizedAction = String(data.action).toLowerCase().trim();
+    
+    if (normalizedAction === 'approved' || normalizedAction === 'approve') {
+      subject = `🍯 Your Seller Application Has Been Approved - ${data.businessName}`;
+      title = 'Application Approved!';
+      message = 'Congratulations! Your seller application has been approved. You can now start creating listings and selling on Hive Joy.';
+      actionText = 'Go to Seller Dashboard';
+      actionUrl = `${appUrl}/seller/dashboard`;
+      bgColor = '#10b981'; // green
+    } else if (normalizedAction === 'rejected' || normalizedAction === 'reject') {
+      subject = `🍯 Seller Application Update - ${data.businessName}`;
+      title = 'Application Not Approved';
+      message = 'We regret to inform you that your seller application was not approved at this time.';
+      actionText = 'View Details';
+      actionUrl = `${appUrl}/seller/apply`;
+      bgColor = '#ef4444'; // red
+    } else {
+      // This should not happen for approve/reject, but keeping for backwards compatibility
+      console.error('Unexpected action value in email:', data.action, 'Normalized:', normalizedAction);
+      // Default to rejected if we can't determine the action (safer than showing "Changes Requested")
+      if (normalizedAction.includes('reject')) {
+        subject = `🍯 Seller Application Update - ${data.businessName}`;
+        title = 'Application Not Approved';
+        message = 'We regret to inform you that your seller application was not approved at this time.';
+        actionText = 'View Details';
+        actionUrl = `${appUrl}/seller/apply`;
+        bgColor = '#ef4444'; // red
+      } else {
+        // Fallback to changes_requested only if it's explicitly that
+        subject = `🍯 Action Required: Update Your Seller Application - ${data.businessName}`;
+        title = 'Changes Requested';
+        message = 'Our team has reviewed your application and requires some additional information or changes before we can proceed.';
+        actionText = 'Update Application';
+        actionUrl = `${appUrl}/seller/register-new`;
+        bgColor = '#f59e0b'; // amber
+      }
+    }
+
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${title} - Hive Joy</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, ${bgColor} 0%, ${bgColor}dd 100%); padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">🍯 ${title}</h1>
+          </div>
+          
+          <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+            <p style="font-size: 16px; margin-top: 0;">Hello ${escapeHtml(data.businessName)},</p>
+            
+            <p style="font-size: 16px;">${message}</p>
+            
+            ${data.notes ? `
+            <div style="background: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid ${bgColor};">
+              <h2 style="margin-top: 0; color: #1f2937; font-size: 18px;">${data.action === 'changes_requested' ? 'Required Changes' : data.action === 'rejected' ? 'Rejection Reason' : 'Notes'}</h2>
+              <p style="margin: 0; color: #4b5563; white-space: pre-wrap;">${escapeHtml(data.notes)}</p>
+            </div>
+            ` : ''}
+            
+            ${data.changedFields && data.changedFields.length > 0 ? `
+            <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0;">
+              <p style="margin: 0; color: #92400e; font-size: 14px;">
+                <strong>Fields that need attention:</strong>
+                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                  ${data.changedFields.map(field => `<li>${escapeHtml(field)}</li>`).join('')}
+                </ul>
+              </p>
+            </div>
+            ` : ''}
+
+            <div style="margin-top: 30px; text-align: center;">
+              <a href="${actionUrl}" 
+                 style="display: inline-block; background: ${bgColor}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                ${actionText}
+              </a>
+            </div>
+
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280;">
+              <p style="margin: 0;">
+                If you have any questions, please contact our support team.
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const emailText = `
+${title} - Hive Joy
+
+Hello ${data.businessName},
+
+${message}
+
+${data.notes ? `\n${data.action === 'changes_requested' ? 'Required Changes:' : 'Notes:'}\n${data.notes}\n` : ''}
+${data.changedFields && data.changedFields.length > 0 ? `\nFields that need attention:\n${data.changedFields.map(f => `- ${f}`).join('\n')}\n` : ''}
+
+${actionText}: ${actionUrl}
+
+If you have any questions, please contact our support team.
+    `;
+
+    const msg = {
+      to: data.email,
+      from: process.env.SENDGRID_FROM_EMAIL || 'noreply@hivejoy.com',
+      subject,
+      text: emailText,
+      html: emailHtml,
+    };
+
+    await sgMail.send(msg);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending application status update email:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
 /**
  * Escape HTML to prevent XSS
  */
