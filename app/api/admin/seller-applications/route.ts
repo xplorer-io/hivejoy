@@ -60,7 +60,8 @@ export async function GET() {
       verification_status: string | null;
       [key: string]: unknown;
     }
-    const applications = (allProducers || []).filter((producer: ProducerWithStatus) => {
+    const producersArray = Array.isArray(allProducers) ? allProducers : [];
+    const applications = producersArray.filter((producer: ProducerWithStatus) => {
       const appStatus = producer.application_status;
       const verStatus = producer.verification_status;
       

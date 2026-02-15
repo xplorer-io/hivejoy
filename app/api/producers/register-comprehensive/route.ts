@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
         if (createProfileError) {
           // Check if it's a conflict error (profile already exists)
-          if (createProfileError.code === '23505' || createProfileError.message?.includes('duplicate') || createProfileError.message?.includes('unique')) {
+          if (('code' in createProfileError && createProfileError.code === '23505') || createProfileError.message?.includes('duplicate') || createProfileError.message?.includes('unique')) {
             // Profile was created by trigger or another process, continue
             console.log('Profile already exists (likely created by trigger), continuing...');
           } else {
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
         if (createProfileError) {
           // Check if it's a conflict error (profile already exists)
-          if (createProfileError.code === '23505' || createProfileError.message?.includes('duplicate') || createProfileError.message?.includes('unique')) {
+          if (('code' in createProfileError && createProfileError.code === '23505') || createProfileError.message?.includes('duplicate') || createProfileError.message?.includes('unique')) {
             // Profile was created by trigger or another process, continue
             console.log('Profile already exists (likely created by trigger), continuing...');
           } else {
@@ -148,8 +148,9 @@ export async function POST(request: Request) {
       // If the application is rejected, allow them to submit a new application
       // Otherwise, they should update their existing profile
       if (producerData) {
-        if (producerData.application_status !== 'rejected' && 
-            producerData.verification_status !== 'rejected') {
+        const producer = producerData as { application_status?: string | null; verification_status?: string | null; id?: string };
+        if (producer.application_status !== 'rejected' && 
+            producer.verification_status !== 'rejected') {
           return NextResponse.json(
             { success: false, error: 'You already have a producer profile. Please update your existing profile instead.' },
             { status: 400 }
@@ -157,7 +158,7 @@ export async function POST(request: Request) {
         }
         // If rejected, we'll update the existing producer record
         isRejectedApplication = true;
-        existingProducerId = producerData.id;
+        existingProducerId = producer.id || null;
       }
     }
 

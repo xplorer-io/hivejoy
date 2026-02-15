@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 /**
  * POST /api/admin/set-admin
@@ -28,8 +29,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // Find the user by email in auth.users
-    const { data: authUser } = await supabase.auth.admin.listUsers();
+    // Find the user by email in auth.users using admin client
+    const adminClient = createAdminClient();
+    if (!adminClient) {
+      return NextResponse.json(
+        { success: false, error: 'Admin client not configured' },
+        { status: 500 }
+      );
+    }
+    
+    const { data: authUser } = await adminClient.auth.admin.listUsers();
     const targetUser = authUser?.users.find(u => u.email === email);
 
     if (!targetUser) {
@@ -39,8 +48,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update or create profile with admin role
-    const { data: profile, error: profileError } = await supabase
+    // Update or create profile with admin role using admin client
+    const { data: profile, error: profileError } = await adminClient
       .from('profiles')
       .upsert({
         id: targetUser.id,

@@ -32,10 +32,10 @@ export async function GET() {
       );
     }
 
-    const producerId = producersData.id;
+    const producerId = (producersData as { id: string }).id;
 
     // Get the most recent application log entry with notes
-    const { data: applicationLog, error: logError } = await supabase
+    const { data: applicationLog } = await supabase
       .from('producer_application_log')
       .select('action, notes, changed_fields, created_at')
       .eq('producer_id', producerId)

@@ -243,7 +243,9 @@ export default function SellerApplyPage() {
         };
 
         const apiField = fieldMap[field] || field;
-        const payload: Record<string, string | number | boolean | string[] | null | undefined> = {
+        // Payload can contain nested objects for addresses
+        type PayloadValue = string | number | boolean | string[] | null | undefined | { [key: string]: PayloadValue };
+        const payload: Record<string, PayloadValue> = {
           producerId: producer.id,
         };
 
@@ -313,14 +315,14 @@ export default function SellerApplyPage() {
             <Label>{label}</Label>
             {type === 'textarea' ? (
               <Textarea
-                value={editValues[field] || ''}
+                value={typeof editValues[field] === 'string' ? editValues[field] : String(editValues[field] || '')}
                 onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
                 rows={3}
               />
             ) : (
               <Input
                 type={type}
-                value={editValues[field] || ''}
+                value={typeof editValues[field] === 'string' ? editValues[field] : String(editValues[field] || '')}
                 onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
               />
             )}
@@ -561,7 +563,7 @@ export default function SellerApplyPage() {
                       {producer.registering_authority === 'Other' && (
                         <FieldDisplayLocal label="Other Authority" field="registeringAuthorityOther" value={producer.registering_authority_other} />
                       )}
-                      {producer.registration_proof_url && (
+                      {typeof producer.registration_proof_url === 'string' && producer.registration_proof_url && (
                         <div className="col-span-2">
                           <Label className="text-muted-foreground text-sm">Registration Proof</Label>
                           <a href={producer.registration_proof_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline block mt-1">
@@ -569,7 +571,7 @@ export default function SellerApplyPage() {
                           </a>
                         </div>
                       )}
-                      {producer.apiary_photo_url && (
+                      {typeof producer.apiary_photo_url === 'string' && producer.apiary_photo_url && (
                         <div className="col-span-2">
                           <Label className="text-muted-foreground text-sm">Apiary Photo</Label>
                           <a href={producer.apiary_photo_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline block mt-1">
@@ -592,7 +594,7 @@ export default function SellerApplyPage() {
                     <Label className="text-muted-foreground text-sm">Number of Hives</Label>
                     <p className="font-medium mt-1">{producer.number_of_hives || 'Not provided'}</p>
                   </div>
-                  {producer.harvest_regions && producer.harvest_regions.length > 0 && (
+                  {Array.isArray(producer.harvest_regions) && producer.harvest_regions.length > 0 && (
                     <div>
                       <Label className="text-muted-foreground text-sm">Harvest Regions</Label>
                       <div className="flex flex-wrap gap-2 mt-1">
@@ -602,7 +604,7 @@ export default function SellerApplyPage() {
                       </div>
                     </div>
                   )}
-                  {producer.typical_harvest_months && producer.typical_harvest_months.length > 0 && (
+                  {Array.isArray(producer.typical_harvest_months) && producer.typical_harvest_months.length > 0 && (
                     <div>
                       <Label className="text-muted-foreground text-sm">Typical Harvest Months</Label>
                       <div className="flex flex-wrap gap-2 mt-1">

@@ -57,10 +57,11 @@ export async function GET() {
       );
     }
 
+    const producersArray = Array.isArray(producers) ? producers : [];
     return NextResponse.json({
       success: true,
-      count: producers?.length || 0,
-      producers: producers || [],
+      count: producersArray.length,
+      producers: producersArray,
     });
   } catch (error) {
     console.error('Error in debug producers API:', error);
