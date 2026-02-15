@@ -73,7 +73,7 @@ export default function TestSetAdminPage() {
             <ol className="list-decimal list-inside space-y-1 mt-2">
               <li>Log out</li>
               <li>Log back in</li>
-              <li>You should see "Admin" role in your profile</li>
+              <li>You should see &quot;Admin&quot; role in your profile</li>
             </ol>
           </div>
         </CardContent>
