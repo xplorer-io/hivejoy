@@ -179,6 +179,22 @@ export async function PATCH(
       };
     }
 
+    // Get producer user_id before updating
+    const { data: producerForUserId } = await supabase
+      .from('producers')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (!producerForUserId) {
+      return NextResponse.json(
+        { success: false, error: 'Producer not found' },
+        { status: 404 }
+      );
+    }
+
+    const userId = (producerForUserId as { user_id: string }).user_id;
+
     // Update producer
     const { data: updatedProducer, error: updateError } = await supabase
       .from('producers')
@@ -193,6 +209,35 @@ export async function PATCH(
         { success: false, error: 'Failed to update application' },
         { status: 500 }
       );
+    }
+
+    // If approved, update user role to 'producer' in profiles table
+    if (action === 'approve') {
+      const { createAdminClient } = await import('@/lib/supabase/admin');
+      const adminClient = createAdminClient();
+      
+      if (adminClient) {
+        // Use admin client to bypass RLS when updating role
+        const { error: roleUpdateError } = await adminClient
+          .from('profiles')
+          .update({ role: 'producer', updated_at: new Date().toISOString() })
+          .eq('id', userId);
+
+        if (roleUpdateError) {
+          console.error('Error updating user role to producer:', roleUpdateError);
+          // Don't fail the approval if role update fails, but log it
+        }
+      } else {
+        // Fallback: try with regular client
+        const { error: roleUpdateError } = await supabase
+          .from('profiles')
+          .update({ role: 'producer', updated_at: new Date().toISOString() })
+          .eq('id', userId);
+
+        if (roleUpdateError) {
+          console.error('Error updating user role to producer:', roleUpdateError);
+        }
+      }
     }
 
     // Create audit log entry
