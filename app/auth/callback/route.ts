@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Collect cookies that will be set during auth exchange
-      const cookiesToSet: Array<{ name: string; value: string; options?: any }> = []
+      const cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }> = []
 
       // Create server client with proper cookie handling
       const supabase = createServerClient(supabaseUrl, supabaseKey, {
