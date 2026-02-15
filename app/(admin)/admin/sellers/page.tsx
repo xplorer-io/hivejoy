@@ -62,7 +62,8 @@ export default function SellersPage() {
       if (data.success && data.sellers) {
         setSellers(data.sellers);
       } else {
-        setError('Failed to fetch sellers');
+        setError(data.error || data.details || 'Failed to fetch sellers');
+        console.error('Failed to fetch sellers:', data);
       }
     } catch (error) {
       console.error('Failed to fetch sellers:', error);

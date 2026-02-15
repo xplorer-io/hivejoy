@@ -53,8 +53,13 @@ export async function GET() {
 
     if (error) {
       console.error('Error fetching sellers:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       return NextResponse.json(
-        { success: false, error: 'Failed to fetch sellers' },
+        { 
+          success: false, 
+          error: 'Failed to fetch sellers',
+          details: error.message || 'Unknown error'
+        },
         { status: 500 }
       );
     }
