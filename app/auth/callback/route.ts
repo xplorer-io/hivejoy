@@ -45,20 +45,21 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent('Supabase not configured')}`, request.url))
       }
 
-      // Create response first to ensure cookies can be set in it
-      const response = NextResponse.next()
+      // Collect cookies that will be set during auth exchange
+      const cookiesToSet: Array<{ name: string; value: string; options?: any }> = []
 
-      // Create server client with proper cookie handling that writes to the response
+      // Create server client with proper cookie handling
       const supabase = createServerClient(supabaseUrl, supabaseKey, {
         cookies: {
           getAll() {
             return cookieStore.getAll()
           },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              // Set cookies in both the cookie store and the response
+          setAll(cookiesToSetArray) {
+            cookiesToSetArray.forEach(({ name, value, options }) => {
+              // Store cookies to set later
+              cookiesToSet.push({ name, value, options })
+              // Also set in cookie store for immediate access
               cookieStore.set(name, value, options)
-              response.cookies.set(name, value, options)
             })
           },
         },
@@ -71,18 +72,28 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent(exchangeError.message)}`, request.url))
       }
 
+      // Determine redirect path
+      let redirectPath = next || '/'
+      
       // If user is authenticated, fetch role and redirect accordingly
       const user = data?.session?.user || (data as { user?: { id: string } })?.user
       if (user) {
         const profile = await getUserProfile(user.id)
         if (profile) {
-          const redirectPath = next || getRedirectPath(profile.role)
-          // Redirect with the response that has cookies set
-          return NextResponse.redirect(new URL(redirectPath, request.url), {
-            headers: response.headers,
-          })
+          redirectPath = next || getRedirectPath(profile.role)
         }
       }
+
+      // Create final redirect response with all cookies set
+      const redirectUrl = new URL(redirectPath, request.url)
+      const response = NextResponse.redirect(redirectUrl)
+      
+      // Set all cookies in the response
+      cookiesToSet.forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options)
+      })
+      
+      return response
     } catch (error) {
       console.error('Supabase auth callback failed:', error)
       return NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent('Authentication failed')}`, request.url))
