@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import { getUserProfile } from '@/lib/api/database'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
