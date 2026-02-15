@@ -538,7 +538,12 @@ export async function getFeaturedProducts(): Promise<ProductWithDetails[]> {
   if (error) {
     // Only log error if it's a real error (not from mock client)
     if (error.message && error.message !== 'Supabase not configured') {
-      console.error('Error fetching featured products:', error.message || error);
+      // Check for infinite recursion error - this is a database policy issue
+      if (error.message.includes('infinite recursion')) {
+        console.error('Error fetching featured products: Infinite recursion in RLS policy. Please run the migration fix_admin_profiles_policy_recursion.sql in Supabase.');
+      } else {
+        console.error('Error fetching featured products:', error.message || error);
+      }
     }
     return [];
   }
