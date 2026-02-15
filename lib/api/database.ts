@@ -261,6 +261,15 @@ export async function getProducerByUserId(userId: string): Promise<ProducerProfi
  * Get featured producers (all verified sellers)
  */
 export async function getFeaturedProducers(): Promise<ProducerProfile[]> {
+  // Check if Supabase is configured
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  if (!supabaseUrl || !supabaseKey) {
+    // Supabase not configured - return empty array silently
+    return [];
+  }
+
   const supabase = await createClient();
   
   const { data, error } = await supabase
@@ -271,7 +280,10 @@ export async function getFeaturedProducers(): Promise<ProducerProfile[]> {
     .limit(12);
 
   if (error) {
-    console.error('Error fetching featured producers:', error);
+    // Only log error if it's a real error (not from mock client)
+    if (error.message && error.message !== 'Supabase not configured') {
+      console.error('Error fetching featured producers:', error.message || error);
+    }
     return [];
   }
 
@@ -501,6 +513,15 @@ export async function getProduct(id: string): Promise<ProductWithDetails | null>
  * Get featured products
  */
 export async function getFeaturedProducts(): Promise<ProductWithDetails[]> {
+  // Check if Supabase is configured
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  if (!supabaseUrl || !supabaseKey) {
+    // Supabase not configured - return empty array silently
+    return [];
+  }
+
   const supabase = await createClient();
   
   const { data, error } = await supabase
@@ -515,7 +536,10 @@ export async function getFeaturedProducts(): Promise<ProductWithDetails[]> {
     .limit(4);
 
   if (error) {
-    console.error('Error fetching featured products:', error);
+    // Only log error if it's a real error (not from mock client)
+    if (error.message && error.message !== 'Supabase not configured') {
+      console.error('Error fetching featured products:', error.message || error);
+    }
     return [];
   }
 
