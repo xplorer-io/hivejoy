@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 /**
  * GET /api/admin/sellers
@@ -32,7 +33,8 @@ export async function GET() {
     }
 
     // Fetch all producers with their profile status
-    const { data: sellers, error } = await supabase
+    // Try with regular client first, fallback to admin client if RLS blocks
+    let { data: sellers, error } = await supabase
       .from('producers')
       .select(`
         id,
@@ -50,6 +52,35 @@ export async function GET() {
       `)
       .in('application_status', ['approved'])
       .order('created_at', { ascending: false });
+
+    // If RLS blocks the query, use admin client
+    if (error && (error.message?.includes('policy') || error.message?.includes('RLS') || error.message?.includes('permission'))) {
+      console.warn('RLS blocked query, using admin client:', error.message);
+      const adminClient = createAdminClient();
+      if (adminClient) {
+        const adminResult = await adminClient
+          .from('producers')
+          .select(`
+            id,
+            business_name,
+            user_id,
+            verification_status,
+            application_status,
+            created_at,
+            profiles:user_id (
+              id,
+              email,
+              role,
+              status
+            )
+          `)
+          .in('application_status', ['approved'])
+          .order('created_at', { ascending: false });
+        
+        sellers = adminResult.data;
+        error = adminResult.error;
+      }
+    }
 
     if (error) {
       console.error('Error fetching sellers:', error);
