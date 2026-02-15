@@ -55,7 +55,12 @@ export async function GET() {
     }
 
     // Filter to only pending applications
-    const applications = (allProducers || []).filter((producer: any) => {
+    interface ProducerWithStatus {
+      application_status: string | null;
+      verification_status: string | null;
+      [key: string]: unknown;
+    }
+    const applications = (allProducers || []).filter((producer: ProducerWithStatus) => {
       const appStatus = producer.application_status;
       const verStatus = producer.verification_status;
       

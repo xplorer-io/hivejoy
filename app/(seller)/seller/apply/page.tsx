@@ -29,10 +29,22 @@ export default function SellerApplyPage() {
   const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
   const [adminNotes, setAdminNotes] = useState<string | null>(null);
   const [changedFields, setChangedFields] = useState<string[]>([]);
-  const [applicationData, setApplicationData] = useState<any>(null);
+  interface ApplicationData {
+    producer: {
+      id: string;
+      [key: string]: string | number | boolean | string[] | null | undefined;
+    };
+    floralSources?: Array<{
+      floral_source_id: string | null;
+      other_floral_source: string | null;
+      floral_sources?: { name: string } | null;
+    }>;
+  }
+  
+  const [applicationData, setApplicationData] = useState<ApplicationData | null>(null);
   const [loadingApplication, setLoadingApplication] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Record<string, any>>({});
+  const [editValues, setEditValues] = useState<Record<string, string | number | boolean | string[] | null | undefined>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -201,7 +213,7 @@ export default function SellerApplyPage() {
     const isChangesRequested = applicationStatus === 'changes_requested';
     const producer = applicationData?.producer;
     
-    const handleEdit = (field: string, currentValue: any) => {
+    const handleEdit = (field: string, currentValue: string | number | boolean | string[] | null | undefined) => {
       setEditingField(field);
       setEditValues({ [field]: currentValue });
     };
@@ -231,7 +243,7 @@ export default function SellerApplyPage() {
         };
 
         const apiField = fieldMap[field] || field;
-        const payload: any = {
+        const payload: Record<string, string | number | boolean | string[] | null | undefined> = {
           producerId: producer.id,
         };
 
@@ -291,7 +303,7 @@ export default function SellerApplyPage() {
       setEditValues({});
     };
 
-    const FieldDisplayLocal = ({ label, field, value, type = 'text' }: { label: string; field: string; value: any; type?: 'text' | 'textarea' | 'email' | 'tel' }) => {
+    const FieldDisplayLocal = ({ label, field, value, type = 'text' }: { label: string; field: string; value: string | number | boolean | string[] | null | undefined; type?: 'text' | 'textarea' | 'email' | 'tel' }) => {
       const isEditing = editingField === field;
       const displayValue = value || 'Not provided';
 
@@ -610,7 +622,7 @@ export default function SellerApplyPage() {
                     <div className="col-span-2">
                       <Label className="text-muted-foreground text-sm">Floral Sources</Label>
                       <div className="flex flex-wrap gap-2 mt-1">
-                        {applicationData.floralSources.map((fs: any, idx: number) => (
+                        {applicationData.floralSources?.map((fs, idx: number) => (
                           <Badge key={idx} variant="outline">
                             {fs.floral_sources?.name || fs.other_floral_source || 'Unknown'}
                           </Badge>

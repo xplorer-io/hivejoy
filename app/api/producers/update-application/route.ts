@@ -57,7 +57,7 @@ export async function PATCH(request: Request) {
     }
 
     // Build update object
-    const updateFields: Record<string, any> = {};
+    const updateFields: Record<string, string | number | boolean | string[] | null | undefined> = {};
 
     // Identity fields
     if (updateData.fullLegalName !== undefined) updateFields.full_legal_name = updateData.fullLegalName?.trim() || null;

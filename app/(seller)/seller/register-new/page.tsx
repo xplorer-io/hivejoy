@@ -253,12 +253,12 @@ export default function SellerRegisterNewPage() {
                 // Load floral sources
                 if (appData.application.floralSources && Array.isArray(appData.application.floralSources)) {
                   const floralSourceIds = appData.application.floralSources
-                    .map((fs: any) => fs.floral_source_id)
-                    .filter((id: string) => id !== null);
+                    .map((fs: { floral_source_id: string | null; other_floral_source?: string | null }) => fs.floral_source_id)
+                    .filter((id: string | null): id is string => id !== null);
                   setSelectedFloralSources(floralSourceIds);
                   
                   // Check for "other" floral source
-                  const otherSource = appData.application.floralSources.find((fs: any) => fs.other_floral_source);
+                  const otherSource = appData.application.floralSources.find((fs: { floral_source_id: string | null; other_floral_source?: string | null }) => fs.other_floral_source);
                   if (otherSource) {
                     setSelectedFloralSources([...floralSourceIds, 'other']);
                     setOtherFloralSource(otherSource.other_floral_source);
