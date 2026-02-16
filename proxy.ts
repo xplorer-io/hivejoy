@@ -8,22 +8,6 @@ async function getCreateServerClient() {
 }
 
 /**
- * Get redirect path based on user role
- */
-function getRedirectPath(role: UserRole): string {
-  switch (role) {
-    case 'consumer':
-      return '/'
-    case 'producer':
-      return '/seller/dashboard'
-    case 'admin':
-      return '/admin/dashboard'
-    default:
-      return '/'
-  }
-}
-
-/**
  * Check if a path requires authentication
  */
 function requiresAuth(pathname: string): boolean {
