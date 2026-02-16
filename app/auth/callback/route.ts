@@ -44,19 +44,36 @@ export async function GET(request: NextRequest) {
             cookiesToSet.forEach(({ name, value, options }) => {
               // Set cookies in both cookie store and response
               cookieStore.set(name, value, options)
-              // Ensure options are properly formatted
+              // Ensure options are properly formatted for Netlify
               if (options) {
-                response.cookies.set(name, value, {
+                // Preserve all options but ensure they're set correctly for production
+                const cookieOptions: {
+                  domain?: string
+                  path?: string
+                  maxAge?: number
+                  httpOnly?: boolean
+                  secure?: boolean
+                  sameSite?: 'lax' | 'strict' | 'none'
+                } = {
                   ...options,
+                  // Ensure path is set (default to /)
+                  path: options.path || '/',
                   // Ensure SameSite is set for cross-site requests
                   sameSite: (options.sameSite as 'lax' | 'strict' | 'none') || 'lax',
-                  // Ensure Secure is set in production
-                  secure: options.secure !== false,
+                  // Ensure Secure is set in production (Netlify uses HTTPS)
+                  secure: process.env.NODE_ENV === 'production' ? true : (options.secure !== false),
                   // Ensure HttpOnly is preserved
                   httpOnly: options.httpOnly !== false,
-                })
+                }
+                response.cookies.set(name, value, cookieOptions)
               } else {
-                response.cookies.set(name, value)
+                // Default options for cookies
+                response.cookies.set(name, value, {
+                  path: '/',
+                  sameSite: 'lax',
+                  secure: process.env.NODE_ENV === 'production',
+                  httpOnly: true,
+                })
               }
             })
           },
@@ -68,6 +85,13 @@ export async function GET(request: NextRequest) {
       if (exchangeError) {
         console.error('Failed to exchange code for session:', exchangeError)
         return NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent(exchangeError.message)}`, request.url))
+      }
+
+      // Verify session was created before redirecting
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        console.error('Session not created after code exchange')
+        return NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent('Session creation failed')}`, request.url))
       }
 
       // Return response with cookies already set
