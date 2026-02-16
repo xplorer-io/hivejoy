@@ -48,9 +48,20 @@ export default function EditListingPage() {
   const [variants, setVariants] = useState<Variant[]>([
     { id: '1', price: '', stock: '', weight: '' },
   ]);
+  const dataLoadedRef = useRef<string | null>(null);
 
   // Fetch product data and batches
   useEffect(() => {
+    // Reset if productId changed
+    if (dataLoadedRef.current !== productId) {
+      dataLoadedRef.current = null;
+      setLoading(true);
+      setVariants([{ id: '1', price: '', stock: '', weight: '' }]);
+    }
+
+    // Prevent running multiple times if data is already loaded for this product
+    if (dataLoadedRef.current === productId) return;
+
     async function fetchData() {
       if (!user?.id || !productId) {
         setError('Invalid product ID.');
@@ -98,6 +109,9 @@ export default function EditListingPage() {
         if (batchesResult.success && batchesResult.batches) {
           setBatches(batchesResult.batches.filter((b: Batch) => b.status === 'active'));
         }
+
+        // Mark data as loaded to prevent re-fetching for this product
+        dataLoadedRef.current = productId;
       } catch (err) {
         console.error('Failed to fetch product data:', err);
         setError('Failed to load product. Please try again.');
@@ -107,7 +121,7 @@ export default function EditListingPage() {
     }
 
     fetchData();
-  }, [user, productId]);
+  }, [user?.id, productId]);
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
