@@ -156,9 +156,9 @@ export async function POST(request: Request) {
 
     // Validate each variant
     for (const variant of variants) {
-      if (!variant.size || !variant.price || variant.stock === undefined || !variant.weight) {
+      if (!variant.price || variant.stock === undefined || !variant.weight) {
         return NextResponse.json(
-          { success: false, error: 'All variant fields (size, price, stock, weight) are required' },
+          { success: false, error: 'All variant fields (price, stock, weight) are required' },
           { status: 400 }
         );
       }
@@ -180,8 +180,9 @@ export async function POST(request: Request) {
       title,
       description,
       photos,
-      variants: variants.map((v: { size: string; price: string; stock: string; weight: string; barcode?: string }) => ({
-        size: v.size,
+      variants: variants.map((v: { price: string; stock: string; weight: string; barcode?: string }) => ({
+        // Generate size from weight (e.g., "250g" from weight 250)
+        size: `${parseFloat(v.weight)}g`,
         price: parseFloat(v.price),
         stock: parseInt(v.stock, 10),
         weight: parseFloat(v.weight),

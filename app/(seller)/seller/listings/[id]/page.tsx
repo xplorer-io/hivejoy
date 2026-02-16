@@ -23,7 +23,6 @@ import { ChevronLeft, Plus, Trash2, Upload, X, AlertCircle } from 'lucide-react'
 
 interface Variant {
   id: string;
-  size: string;
   price: string;
   stock: string;
   weight: string;
@@ -47,7 +46,7 @@ export default function EditListingPage() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [variants, setVariants] = useState<Variant[]>([
-    { id: '1', size: '250g', price: '', stock: '', weight: '250' },
+    { id: '1', price: '', stock: '', weight: '' },
   ]);
 
   // Fetch product data and batches
@@ -79,14 +78,15 @@ export default function EditListingPage() {
         setSelectedBatch(product.batchId);
         
         // Convert variants to form format
+        // Extract weight from size if weight is not available (for backwards compatibility)
         if (product.variants && product.variants.length > 0) {
           setVariants(
             product.variants.map((v, index) => ({
               id: String(index + 1),
-              size: v.size,
               price: String(v.price),
               stock: String(v.stock),
-              weight: String(v.weight),
+              // Use weight if available, otherwise extract from size (e.g., "250g" -> "250")
+              weight: v.weight ? String(v.weight) : (v.size ? v.size.replace(/[^0-9.]/g, '') : ''),
             }))
           );
         }
@@ -159,7 +159,7 @@ export default function EditListingPage() {
     const newId = String(variants.length + 1);
     setVariants([
       ...variants,
-      { id: newId, size: '', price: '', stock: '', weight: '' },
+      { id: newId, price: '', stock: '', weight: '' },
     ]);
   };
 
@@ -200,10 +200,10 @@ export default function EditListingPage() {
       }
 
       const invalidVariants = variants.some(
-        (v) => !v.size.trim() || !v.price || !v.stock || !v.weight
+        (v) => !v.price || !v.stock || !v.weight
       );
       if (invalidVariants) {
-        setError('Please fill in all variant fields.');
+        setError('Please fill in all variant fields (price, stock, weight).');
         setSaving(false);
         return;
       }
@@ -218,7 +218,8 @@ export default function EditListingPage() {
           description: description.trim(),
           photos,
           variants: variants.map((v) => ({
-            size: v.size.trim(),
+            // Generate size from weight (e.g., "250g" from weight 250)
+            size: `${parseFloat(v.weight)}g`,
             price: parseFloat(v.price),
             stock: parseInt(v.stock, 10),
             weight: parseFloat(v.weight),
@@ -413,17 +414,8 @@ export default function EditListingPage() {
             {variants.map((variant) => (
               <div
                 key={variant.id}
-                className="grid grid-cols-5 gap-4 p-4 rounded-lg bg-muted/50"
+                className="grid grid-cols-4 gap-4 p-4 rounded-lg bg-muted/50"
               >
-                <div className="space-y-2">
-                  <Label>Size *</Label>
-                  <Input
-                    value={variant.size}
-                    onChange={(e) => updateVariant(variant.id, 'size', e.target.value)}
-                    placeholder="250g"
-                    required
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label>Price ($) *</Label>
                   <Input
@@ -432,7 +424,7 @@ export default function EditListingPage() {
                     min="0"
                     value={variant.price}
                     onChange={(e) => updateVariant(variant.id, 'price', e.target.value)}
-                    placeholder="18.50"
+                    placeholder="18.5"
                     required
                   />
                 </div>

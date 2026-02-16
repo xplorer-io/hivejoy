@@ -24,7 +24,6 @@ import { ChevronLeft, Plus, Trash2, Upload, X, AlertCircle } from 'lucide-react'
 
 interface Variant {
   id: string;
-  size: string;
   price: string;
   stock: string;
   weight: string;
@@ -46,7 +45,7 @@ export default function NewListingPage() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [variants, setVariants] = useState<Variant[]>([
-    { id: '1', size: '250g', price: '', stock: '', weight: '250' },
+    { id: '1', price: '', stock: '', weight: '' },
   ]);
 
   // Get producer ID and fetch batches (producer profile will be auto-created if needed)
@@ -116,17 +115,35 @@ export default function NewListingPage() {
       const uploadResults = await uploadImages(validFiles, 'products');
       
       const successfulUploads = uploadResults.filter((r) => r.success);
+      const failedUploads = uploadResults.filter((r) => !r.success);
+      
       if (successfulUploads.length === 0) {
-        setError('Failed to upload photos. Please try again.');
+        // Show specific error messages if available
+        const errorMessages = failedUploads
+          .map((r) => r.error)
+          .filter((e): e is string => !!e);
+        const errorMessage = errorMessages.length > 0
+          ? `Failed to upload photos: ${errorMessages.join(', ')}`
+          : 'Failed to upload photos. Please check your Cloudinary configuration and try again.';
+        setError(errorMessage);
         return;
       }
 
-      // Update state
+      // Update state with successful uploads
       const newUrls = successfulUploads.map((r) => r.url!);
       setPhotos([...photos, ...newUrls]);
       setPhotoFiles([...photoFiles, ...validFiles.slice(0, successfulUploads.length)]);
+      
+      // Show warning if some uploads failed
+      if (failedUploads.length > 0) {
+        const errorMessages = failedUploads
+          .map((r) => r.error)
+          .filter((e): e is string => !!e);
+        console.warn('Some photos failed to upload:', errorMessages);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload photos.');
+      console.error('Photo upload error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload photos. Please try again.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -144,7 +161,7 @@ export default function NewListingPage() {
     const newId = String(variants.length + 1);
     setVariants([
       ...variants,
-      { id: newId, size: '', price: '', stock: '', weight: '' },
+      { id: newId, price: '', stock: '', weight: '' },
     ]);
   };
 
@@ -187,10 +204,10 @@ export default function NewListingPage() {
 
       // Validate variants
       const invalidVariants = variants.some(
-        (v) => !v.size.trim() || !v.price || !v.stock || !v.weight
+        (v) => !v.price || !v.stock || !v.weight
       );
       if (invalidVariants) {
-        setError('Please fill in all variant fields.');
+        setError('Please fill in all variant fields (price, stock, weight).');
         setLoading(false);
         return;
       }
@@ -213,7 +230,6 @@ export default function NewListingPage() {
           description: description.trim(),
           photos,
           variants: variants.map((v) => ({
-            size: v.size.trim(),
             price: v.price,
             stock: v.stock,
             weight: v.weight,
@@ -412,17 +428,8 @@ export default function NewListingPage() {
             {variants.map((variant) => (
               <div
                 key={variant.id}
-                className="grid grid-cols-5 gap-4 p-4 rounded-lg bg-muted/50"
+                className="grid grid-cols-4 gap-4 p-4 rounded-lg bg-muted/50"
               >
-                <div className="space-y-2">
-                  <Label>Size *</Label>
-                  <Input
-                    value={variant.size}
-                    onChange={(e) => updateVariant(variant.id, 'size', e.target.value)}
-                    placeholder="250g"
-                    required
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label>Price ($) *</Label>
                   <Input
@@ -431,7 +438,7 @@ export default function NewListingPage() {
                     min="0"
                     value={variant.price}
                     onChange={(e) => updateVariant(variant.id, 'price', e.target.value)}
-                    placeholder="18.50"
+                    placeholder="18.5"
                     required
                   />
                 </div>
