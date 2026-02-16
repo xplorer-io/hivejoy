@@ -221,7 +221,8 @@ export default async function proxy(request: NextRequest) {
       const requiredRole = requiresRole(pathname)
       if (requiredRole && profile.role !== requiredRole && profile.role !== 'admin') {
         // Admin can access all routes, but others need specific role
-        const redirectUrl = new URL(getRedirectPath(profile.role), request.url)
+        // Redirect to home page with error message
+        const redirectUrl = new URL('/', request.url)
         redirectUrl.searchParams.set('error', 'Insufficient permissions')
         return NextResponse.redirect(redirectUrl)
       }

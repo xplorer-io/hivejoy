@@ -6,22 +6,6 @@ import { useAuthStore } from '@/lib/stores';
 import { sendOTP, verifyOTP, signInWithGoogle, signInWithFacebook } from '@/lib/api/auth';
 import type { UserRole } from '@/types';
 
-/**
- * Get redirect path based on user role
- */
-function getRedirectPath(role: UserRole): string {
-  switch (role) {
-    case 'consumer':
-      return '/';
-    case 'producer':
-      return '/seller/dashboard';
-    case 'admin':
-      return '/admin/dashboard';
-    default:
-      return '/';
-  }
-}
-
 export function useAuth(role?: UserRole) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -69,9 +53,8 @@ export function useAuth(role?: UserRole) {
       const result = await verifyOTP(email, otp);
       if (result.success && result.user) {
         setUser(result.user);
-        // Redirect based on user's role from database
-        const redirectPath = getRedirectPath(result.user.role);
-        router.push(redirectPath);
+        // Always redirect to home page - role-based access is handled by middleware and layouts
+        router.push('/');
       } else {
         setError(result.message);
       }

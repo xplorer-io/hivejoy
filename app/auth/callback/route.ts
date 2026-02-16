@@ -1,25 +1,7 @@
-import { getUserProfile } from '@/lib/api/database'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import type { UserRole } from '@/types'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-
-/**
- * Get redirect path based on user role
- */
-function getRedirectPath(role: UserRole): string {
-  switch (role) {
-    case 'consumer':
-      return '/'
-    case 'producer':
-      return '/seller/dashboard'
-    case 'admin':
-      return '/admin/dashboard'
-    default:
-      return '/'
-  }
-}
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -72,17 +54,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent(exchangeError.message)}`, request.url))
       }
 
-      // Determine redirect path
-      let redirectPath = next || '/'
-      
-      // If user is authenticated, fetch role and redirect accordingly
-      const user = data?.session?.user || (data as { user?: { id: string } })?.user
-      if (user) {
-        const profile = await getUserProfile(user.id)
-        if (profile) {
-          redirectPath = next || getRedirectPath(profile.role)
-        }
-      }
+      // Always redirect to homepage (or next parameter if provided)
+      // Role-based access is handled by middleware and layouts
+      const redirectPath = next || '/'
 
       // Create final redirect response with all cookies set
       const redirectUrl = new URL(redirectPath, request.url)
