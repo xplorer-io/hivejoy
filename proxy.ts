@@ -62,6 +62,11 @@ export default async function proxy(request: NextRequest) {
   }
 
   // Allow public paths (except auth routes that need redirects)
+  // IMPORTANT: Exclude auth callback from middleware to prevent cookie issues
+  if (pathname === '/auth/callback') {
+    return supabaseResponse
+  }
+
   const publicPaths = [
     '/auth',
     '/api',
