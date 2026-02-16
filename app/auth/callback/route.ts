@@ -27,21 +27,37 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent('Supabase not configured')}`, request.url))
       }
 
-      // Collect cookies that will be set during auth exchange
-      const cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }> = []
+      // Create redirect URL first
+      const redirectPath = next || '/'
+      const redirectUrl = new URL(redirectPath, request.url)
+      
+      // Create response object first so we can set cookies on it
+      const response = NextResponse.redirect(redirectUrl)
 
-      // Create server client with proper cookie handling
+      // Create server client with proper cookie handling that writes directly to response
       const supabase = createServerClient(supabaseUrl, supabaseKey, {
         cookies: {
           getAll() {
             return cookieStore.getAll()
           },
-          setAll(cookiesToSetArray) {
-            cookiesToSetArray.forEach(({ name, value, options }) => {
-              // Store cookies to set later
-              cookiesToSet.push({ name, value, options })
-              // Also set in cookie store for immediate access
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              // Set cookies in both cookie store and response
               cookieStore.set(name, value, options)
+              // Ensure options are properly formatted
+              if (options) {
+                response.cookies.set(name, value, {
+                  ...options,
+                  // Ensure SameSite is set for cross-site requests
+                  sameSite: (options.sameSite as 'lax' | 'strict' | 'none') || 'lax',
+                  // Ensure Secure is set in production
+                  secure: options.secure !== false,
+                  // Ensure HttpOnly is preserved
+                  httpOnly: options.httpOnly !== false,
+                })
+              } else {
+                response.cookies.set(name, value)
+              }
             })
           },
         },
@@ -54,19 +70,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL(`/auth?error=${encodeURIComponent(exchangeError.message)}`, request.url))
       }
 
-      // Always redirect to homepage (or next parameter if provided)
-      // Role-based access is handled by middleware and layouts
-      const redirectPath = next || '/'
-
-      // Create final redirect response with all cookies set
-      const redirectUrl = new URL(redirectPath, request.url)
-      const response = NextResponse.redirect(redirectUrl)
-      
-      // Set all cookies in the response
-      cookiesToSet.forEach(({ name, value, options }) => {
-        response.cookies.set(name, value, options)
-      })
-      
+      // Return response with cookies already set
       return response
     } catch (error) {
       console.error('Supabase auth callback failed:', error)
