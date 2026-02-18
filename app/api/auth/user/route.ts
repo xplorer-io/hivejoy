@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserProfile } from '@/lib/api/database';
 
+type ProfileResponse = { id: string; email: string; phone?: string; role: 'consumer' | 'producer' | 'admin'; status: string; createdAt: string; updatedAt: string };
+
+function mapProfileRow(row: { id: string; email: string; phone?: string | null; role?: string | null; status?: string | null; created_at: string; updated_at: string }): ProfileResponse {
+  return {
+    id: row.id,
+    email: row.email,
+    phone: row.phone ?? undefined,
+    role: (row.role as 'consumer' | 'producer' | 'admin') || 'consumer',
+    status: (row.status as string) || 'active',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 /**
  * Get current authenticated user's profile with role from database.
  * Uses admin client when available so the role is always current (e.g. after admin approves seller).
@@ -21,7 +35,7 @@ export async function GET() {
     // Prefer admin client so we always get the latest role from DB (bypasses RLS/cache)
     const { createAdminClient } = await import('@/lib/supabase/admin');
     const adminClient = createAdminClient();
-    let profile: { id: string; email: string; phone?: string; role: 'consumer' | 'producer' | 'admin'; status: string; createdAt: string; updatedAt: string } | null = null;
+    let profile: ProfileResponse | null = null;
 
     if (adminClient) {
       const { data: adminProfile } = await adminClient
@@ -30,15 +44,7 @@ export async function GET() {
         .eq('id', user.id)
         .single();
       if (adminProfile) {
-        profile = {
-          id: adminProfile.id,
-          email: adminProfile.email,
-          phone: adminProfile.phone || undefined,
-          role: (adminProfile.role as 'consumer' | 'producer' | 'admin') || 'consumer',
-          status: (adminProfile.status as string) || 'active',
-          createdAt: adminProfile.created_at,
-          updatedAt: adminProfile.updated_at,
-        };
+        profile = mapProfileRow(adminProfile);
       }
     }
 
@@ -68,18 +74,9 @@ export async function GET() {
           .single();
 
         if (!createError && newProfile) {
-          profile = {
-            id: newProfile.id,
-            email: newProfile.email,
-            phone: newProfile.phone || undefined,
-            role: (newProfile.role as 'consumer' | 'producer' | 'admin') || 'consumer',
-            status: (newProfile.status as 'active' | 'suspended' | 'banned') || 'active',
-            createdAt: newProfile.created_at,
-            updatedAt: newProfile.updated_at,
-          };
+          profile = mapProfileRow(newProfile);
         } else {
           console.error('Failed to create profile:', createError);
-          // Fallback: try with regular client
           const { data: fallbackProfile, error: fallbackError } = await supabase
             .from('profiles')
             .upsert({
@@ -94,19 +91,10 @@ export async function GET() {
             .single();
 
           if (!fallbackError && fallbackProfile) {
-            profile = {
-              id: fallbackProfile.id,
-              email: fallbackProfile.email,
-              phone: fallbackProfile.phone || undefined,
-              role: (fallbackProfile.role as 'consumer' | 'producer' | 'admin') || 'consumer',
-              status: (fallbackProfile.status as 'active' | 'suspended' | 'banned') || 'active',
-              createdAt: fallbackProfile.created_at,
-              updatedAt: fallbackProfile.updated_at,
-            };
+            profile = mapProfileRow(fallbackProfile);
           }
         }
       } else {
-        // No admin client, try with regular client
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
           .upsert({
@@ -121,15 +109,7 @@ export async function GET() {
           .single();
 
         if (!createError && newProfile) {
-          profile = {
-            id: newProfile.id,
-            email: newProfile.email,
-            phone: newProfile.phone || undefined,
-            role: (newProfile.role as 'consumer' | 'producer' | 'admin') || 'consumer',
-            status: (newProfile.status as 'active' | 'suspended' | 'banned') || 'active',
-            createdAt: newProfile.created_at,
-            updatedAt: newProfile.updated_at,
-          };
+          profile = mapProfileRow(newProfile);
         }
       }
     }

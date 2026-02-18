@@ -65,16 +65,13 @@ export async function PATCH(
       );
     }
 
-    // Get user's producer
-    const { data: producersData } = await supabase
+    const { data: producersList } = await supabase
       .from('producers')
       .select('id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .eq('user_id', user.id);
 
-    if (!producersData || product.producerId !== (producersData as { id: string }).id) {
+    const producerIds = (producersList as { id: string }[] | null)?.map((p) => p.id) ?? [];
+    if (producerIds.length === 0 || !producerIds.includes(product.producerId)) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. This product does not belong to you.' },
         { status: 403 }
@@ -184,16 +181,13 @@ export async function DELETE(
       );
     }
 
-    // Get user's producer
-    const { data: producersData } = await supabase
+    const { data: producersList } = await supabase
       .from('producers')
       .select('id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .eq('user_id', user.id);
 
-    if (!producersData || product.producerId !== (producersData as { id: string }).id) {
+    const producerIds = (producersList as { id: string }[] | null)?.map((p) => p.id) ?? [];
+    if (producerIds.length === 0 || !producerIds.includes(product.producerId)) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. This product does not belong to you.' },
         { status: 403 }

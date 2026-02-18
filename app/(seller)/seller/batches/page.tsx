@@ -113,28 +113,32 @@ export default function BatchesPage() {
       console.log('[BatchesPage] Delete response:', response.status, data);
 
       if (response.ok && data.success) {
-        // Optimistically remove from list
-        setBatches(batches.filter((b) => b.id !== batchId));
+        // Optimistically remove from list (functional update to avoid stale closure)
+        setBatches((prev) => prev.filter((b) => b.id !== batchId));
         
         // Verify deletion by re-fetching after a short delay
         setTimeout(async () => {
-          const verifyResponse = await fetch('/api/batches?t=' + Date.now(), {
-            cache: 'no-store',
-          });
-          const verifyData = await verifyResponse.json();
-          
-          if (verifyData.success && verifyData.batches) {
-            const stillExists = verifyData.batches.some((b: Batch) => b.id === batchId);
-            if (stillExists) {
-              console.warn('[BatchesPage] Batch still exists after deletion!');
-              alert('Batch deletion may have failed. Refreshing list...');
-              setBatches(verifyData.batches);
-            } else {
-              console.log('[BatchesPage] Batch successfully deleted');
-              setBatches(verifyData.batches);
+          try {
+            const verifyResponse = await fetch('/api/batches?t=' + Date.now(), {
+              cache: 'no-store',
+            });
+            const verifyData = await verifyResponse.json();
+            
+            if (verifyData.success && verifyData.batches) {
+              const stillExists = verifyData.batches.some((b: Batch) => b.id === batchId);
+              if (stillExists) {
+                console.warn('[BatchesPage] Batch still exists after deletion!');
+                alert('Batch deletion may have failed. Refreshing list...');
+                setBatches(verifyData.batches);
+              } else {
+                setBatches(verifyData.batches);
+              }
             }
+          } catch (err) {
+            console.error('[BatchesPage] Error verifying deletion:', err);
+          } finally {
+            setJustDeleted(false);
           }
-          setJustDeleted(false);
         }, 500);
       } else {
         setJustDeleted(false);

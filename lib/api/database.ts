@@ -176,23 +176,35 @@ function mapProduct(row: ProductRow, variants: ProductVariant[] = []): Product {
 
 // ==================== PRODUCERS ====================
 
-// List of producer IDs to exclude (e.g., test accounts, placeholders)
-const EXCLUDED_PRODUCER_IDS = [
+const DEFAULT_EXCLUDED_PRODUCER_IDS = [
   'b14e8848-e60f-4adf-b96e-db00c5ecc22c',
   '6bd9c0d5-1cae-4008-be84-3925919be0e1',
 ];
 
+function getExcludedProducerIds(): string[] {
+  const raw = process.env.EXCLUDED_PRODUCER_IDS;
+  if (!raw?.trim()) return DEFAULT_EXCLUDED_PRODUCER_IDS;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : DEFAULT_EXCLUDED_PRODUCER_IDS;
+  } catch {
+    return raw.split(',').map((s) => s.trim()).filter(Boolean) || DEFAULT_EXCLUDED_PRODUCER_IDS;
+  }
+}
+
+const PLACEHOLDER_BUSINESS_NAMES = [
+  'producer', 'test producer', 'sample producer', 'golden hive apiaries',
+  'sunny meadows honey', 'example producer', 'demo producer', 'test', 'sample',
+];
+
 /** Shared filter: exclude placeholder/test producer rows */
 function filterValidProducerRows(rows: ProducerRow[]): ProducerRow[] {
+  const excludedIds = getExcludedProducerIds();
   return rows.filter((row: ProducerRow) => {
-    if (EXCLUDED_PRODUCER_IDS.includes(row.id)) return false;
+    if (excludedIds.includes(row.id)) return false;
     if (!row.business_name || row.business_name.trim() === '') return false;
     const businessName = row.business_name.trim().toLowerCase();
-    const placeholderNames = [
-      'producer', 'test producer', 'sample producer', 'golden hive apiaries',
-      'sunny meadows honey', 'example producer', 'demo producer', 'test', 'sample',
-    ];
-    if (placeholderNames.some((p) => businessName.includes(p))) return false;
+    if (PLACEHOLDER_BUSINESS_NAMES.some((p) => businessName.includes(p))) return false;
     if (businessName.includes('@') || /^[a-z0-9._-]+@/.test(businessName)) return false;
     return true;
   });
@@ -207,14 +219,17 @@ export async function getProducers(
 ): Promise<PaginatedResponse<ProducerProfile>> {
   const supabase = await createClient();
 
-  // Only verified producers (verification_status = 'approved')
-  const { data, error } = await supabase
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize - 1;
+
+  const { data, error, count } = await supabase
     .from('producers')
     .select('*', { count: 'exact' })
     .eq('verification_status', 'approved')
     .neq('business_name', 'Producer')
     .neq('business_name', '')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(startIndex, endIndex);
 
   if (error) {
     console.error('Error fetching producers:', error);
@@ -223,14 +238,11 @@ export async function getProducers(
 
   const producerData = Array.isArray(data) ? data : [];
   const validProducers = filterValidProducerRows(producerData);
-  const total = validProducers.length;
+  const total = typeof count === 'number' ? count : validProducers.length;
   const totalPages = Math.ceil(total / pageSize) || 1;
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const paged = validProducers.slice(start, end);
 
   return {
-    data: paged.map(mapProducer),
+    data: validProducers.map(mapProducer),
     total,
     page,
     pageSize,
@@ -243,8 +255,7 @@ export async function getProducers(
  * Get producer by ID
  */
 export async function getProducer(id: string): Promise<ProducerProfile | null> {
-  // Filter out excluded producer IDs
-  if (EXCLUDED_PRODUCER_IDS.includes(id)) {
+  if (getExcludedProducerIds().includes(id)) {
     return null;
   }
   
@@ -555,7 +566,7 @@ export async function getProducts(
   // Filter out placeholder products
   const validProducts = products.filter((product) => {
     // Exclude products from excluded producers
-    if (product.producerId && EXCLUDED_PRODUCER_IDS.includes(product.producerId)) {
+    if (product.producerId && getExcludedProducerIds().includes(product.producerId)) {
       return false;
     }
 
@@ -771,7 +782,7 @@ export async function getFeaturedProducts(): Promise<ProductWithDetails[]> {
       }
 
       // Exclude products from excluded producers
-      if (product.producerId && EXCLUDED_PRODUCER_IDS.includes(product.producerId)) {
+      if (product.producerId && getExcludedProducerIds().includes(product.producerId)) {
         return false;
       }
 

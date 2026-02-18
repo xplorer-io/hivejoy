@@ -38,8 +38,15 @@ export async function GET() {
     producersData = data as Record<string, unknown> | null;
     producersError = error as { message: string } | null;
 
+    if (producersError) {
+      return NextResponse.json(
+        { success: false, error: 'Producer profile not found' },
+        { status: 404 }
+      );
+    }
+
     // If no producer and user is admin, create a minimal producer so they can use the Profile page without seller verification
-    if ((producersError || !producersData) && user.id) {
+    if (!producersData && user.id) {
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
@@ -85,7 +92,7 @@ export async function GET() {
       }
     }
 
-    if (producersError || !producersData) {
+    if (!producersData) {
       return NextResponse.json(
         { success: false, error: 'Producer profile not found' },
         { status: 404 }

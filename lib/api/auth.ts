@@ -45,24 +45,27 @@ export async function sendOTP(emailOrPhone: string): Promise<{ success: boolean;
       })
       
       if (error) {
-        // Provide user-friendly error messages
-        let userMessage = error.message;
-        if (error.message.includes('rate limit') || error.message.includes('too many')) {
-          userMessage = 'Too many requests. Please wait a few minutes before trying again.';
-        } else if (error.message.includes('Database error') || error.message.includes('updating user')) {
-          // This error usually means the profile creation trigger failed, but the user was created
-          // The profile will be created automatically on first login, so we can proceed
-          console.warn('Profile creation trigger may have failed, but user was created:', error.message);
-          // Still return success - the OTP was sent, profile will be created on verification
+        const code = typeof (error as { code?: string }).code === 'string' ? (error as { code?: string }).code : undefined;
+        const status = typeof (error as { status?: number }).status === 'number' ? (error as { status?: number }).status : undefined;
+        const isProfileTriggerFailure = code !== undefined || status !== undefined
+          ? (code === '23505' || status === 422)
+          : (error.message.includes('Database error') || error.message.includes('updating user'));
+
+        if (isProfileTriggerFailure) {
+          console.warn('Profile creation trigger may have failed, but user was created:', error);
           return {
             success: true,
             message: 'OTP sent successfully. Please check your email.',
-          }
+          };
         }
+        if (error.message.includes('rate limit') || error.message.includes('too many')) {
+          return { success: false, message: 'Too many requests. Please wait a few minutes before trying again.' };
+        }
+        console.error('OTP send error:', error);
         return {
           success: false,
-          message: userMessage,
-        }
+          message: error.message || 'Something went wrong. Please try again.',
+        };
       }
     } else {
       // For phone number OTP

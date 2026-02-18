@@ -28,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const photo = product.photos?.[0] ?? null;
   const region = product.batch?.region ?? 'Unknown region';
   const producerName = product.producer?.businessName ?? 'Unknown producer';
-  const badgeLevel = product.producer?.badgeLevel ?? 'verified';
+  const badgeLevel = product.producer?.badgeLevel;
 
   return (
     <CardFrame
@@ -42,10 +42,11 @@ export function ProductCard({ product }: ProductCardProps) {
         fallback={<span className="text-4xl">🍯</span>}
       />
 
-      {/* Floating badge (overlay) */}
-      <div className="absolute left-3 top-3">
-        <ProducerBadge level={badgeLevel} />
-      </div>
+      {(badgeLevel === 'premium' || badgeLevel === 'verified') && (
+        <div className="absolute left-3 top-3">
+          <ProducerBadge level={badgeLevel} />
+        </div>
+      )}
 
       <CardContent className="p-4">
         <div className="space-y-2">

@@ -118,7 +118,7 @@ export async function PATCH(
         );
       }
 
-      await adminClient
+      const { error: profileUpdateError } = await adminClient
         .from('profiles')
         .update({
           role: 'consumer',
@@ -126,6 +126,14 @@ export async function PATCH(
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId);
+
+      if (profileUpdateError) {
+        console.error('Error reverting profile after remove:', profileUpdateError);
+        return NextResponse.json(
+          { success: false, error: 'Seller data was deleted but profile update failed. Please contact support.' },
+          { status: 500 }
+        );
+      }
 
       if (sellerEmail) {
         await sendSellerStatusChangeEmail({

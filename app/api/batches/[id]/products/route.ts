@@ -22,14 +22,28 @@ export async function GET(
 
     const { id: batchId } = await params;
 
-    // Get user's producer
     const { data: producersData } = await supabase
       .from('producers')
       .select('id')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (!producersData || (producersData as { id: string }[]).length === 0) {
+    const producerIds = (producersData as { id: string }[] | null)?.map((p) => p.id) ?? [];
+    if (producerIds.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 403 }
+      );
+    }
+
+    const { data: batchRow } = await supabase
+      .from('batches')
+      .select('id, producer_id')
+      .eq('id', batchId)
+      .in('producer_id', producerIds)
+      .maybeSingle();
+
+    if (!batchRow) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 403 }

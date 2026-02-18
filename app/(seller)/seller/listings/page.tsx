@@ -44,134 +44,70 @@ export default function ListingsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [justDeleted, setJustDeleted] = useState(false);
 
-  useEffect(() => {
-    async function fetchProducts() {
-      if (!user?.id) {
-        setLoading(false);
+  const refreshProducts = async () => {
+    if (!user?.id) return;
+    try {
+      const producerResponse = await fetch('/api/producers/me');
+      if (!producerResponse.ok) {
+        setProducts([]);
         return;
       }
-
-      try {
-        // Get producer profile
-        const producerResponse = await fetch('/api/producers/me');
-        
-        if (!producerResponse.ok) {
-          // No producer found - that's okay, just show empty list
-          setProducts([]);
-          setLoading(false);
-          return;
-        }
-        
-        const producerData = await producerResponse.json();
-
-        if (!producerData.success || !producerData.producer) {
-          setProducts([]);
-          setLoading(false);
-          return;
-        }
-
-        // Fetch all products for this producer via API
-        const productsResponse = await fetch(`/api/producers/${producerData.producer.id}/products`);
-        const productsData = await productsResponse.json();
-        
-        if (productsData.success && productsData.products) {
-          setProducts(productsData.products);
-        } else {
-          setProducts([]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch products:', error);
+      const producerData = await producerResponse.json();
+      if (!producerData.success || !producerData.producer) {
         setProducts([]);
-      } finally {
-        setLoading(false);
+        return;
       }
+      const productsResponse = await fetch(`/api/producers/${producerData.producer.id}/products`);
+      const productsData = await productsResponse.json();
+      if (productsData.success && productsData.products) {
+        setProducts(productsData.products);
+      } else {
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      setProducts([]);
     }
+  };
 
-    fetchProducts();
-  }, [user, justDeleted]);
-
-  const handleDelete = async (productId: string) => {
-    if (!confirm('Are you sure you want to delete this listing? This action cannot be undone.')) {
+  useEffect(() => {
+    if (!user?.id) {
+      setLoading(false);
       return;
     }
+    let cancelled = false;
+    async function run() {
+      try {
+        await refreshProducts();
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
+  const handleDelete = async (productId: string) => {
     setDeletingId(productId);
-    setJustDeleted(true);
 
     try {
       const response = await fetch(`/api/products/${productId}`, {
         method: 'DELETE',
       });
-
       const data = await response.json();
 
-      console.log('[ListingsPage] Delete response:', response.status, data);
-
       if (response.ok && data.success) {
-        // Optimistically remove from list
-        setProducts(products.filter((p) => p.id !== productId));
-        
-        // Verify deletion by re-fetching after a short delay
-        setTimeout(async () => {
-          // Re-fetch products to verify deletion
-          try {
-            const producerResponse = await fetch('/api/producers/me');
-            if (!producerResponse.ok) {
-              setJustDeleted(false);
-              return;
-            }
-            
-            const producerData = await producerResponse.json();
-            if (!producerData.success || !producerData.producer) {
-              setJustDeleted(false);
-              return;
-            }
-
-            const productsResponse = await fetch(`/api/producers/${producerData.producer.id}/products`);
-            const productsData = await productsResponse.json();
-            
-            if (productsData.success && productsData.products) {
-              const stillExists = productsData.products.some((p: Product) => p.id === productId);
-              if (stillExists) {
-                console.warn('[ListingsPage] Product still exists after deletion!');
-                alert('Product deletion may have failed. Refreshing list...');
-                setProducts(productsData.products);
-              } else {
-                console.log('[ListingsPage] Product successfully deleted');
-                setProducts(productsData.products);
-              }
-            }
-          } catch (error) {
-            console.error('[ListingsPage] Error verifying deletion:', error);
-          }
-          setJustDeleted(false);
-        }, 500);
+        setProducts((prev) => prev.filter((p) => p.id !== productId));
+        await refreshProducts();
       } else {
-        setJustDeleted(false);
         alert(data.error || 'Failed to delete listing');
-        // Refresh the list to show current state
-        try {
-          const producerResponse = await fetch('/api/producers/me');
-          if (producerResponse.ok) {
-            const producerData = await producerResponse.json();
-            if (producerData.success && producerData.producer) {
-              const productsResponse = await fetch(`/api/producers/${producerData.producer.id}/products`);
-              const productsData = await productsResponse.json();
-              if (productsData.success && productsData.products) {
-                setProducts(productsData.products);
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Failed to refresh products:', error);
-        }
+        await refreshProducts();
       }
     } catch (error) {
       console.error('Failed to delete listing:', error);
       alert('Failed to delete listing. Please try again.');
-      setJustDeleted(false);
+      await refreshProducts();
     } finally {
       setDeletingId(null);
     }

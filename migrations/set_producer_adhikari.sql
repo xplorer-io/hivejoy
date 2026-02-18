@@ -1,19 +1,9 @@
--- Set asthaadhikari2024 / adhikariastha2024 as producer (approved seller)
--- Run in Supabase SQL Editor
+-- Set specific users as producer (approved seller)
+-- Run in Supabase SQL Editor. Replace the placeholder with actual profile IDs or run
+-- a one-off query with real identifiers; do not commit literal emails to the repo.
 
-UPDATE public.profiles
-SET
-  role = 'producer',
-  updated_at = NOW()
-WHERE email IN (
-  'asthaadhikari2024@gmail.com',
-  'adhikariastha2024@gmail.com'
-);
+-- Example: update by profile id (preferred)
+-- UPDATE public.profiles SET role = 'producer', updated_at = NOW() WHERE id IN ('uuid-1', 'uuid-2');
 
--- Verify
-SELECT id, email, role, status, updated_at
-FROM public.profiles
-WHERE email IN (
-  'asthaadhikari2024@gmail.com',
-  'adhikariastha2024@gmail.com'
-);
+-- Example: update by email (run manually, then remove or parameterize)
+-- UPDATE public.profiles SET role = 'producer', updated_at = NOW() WHERE email IN ('user1@example.com', 'user2@example.com');
