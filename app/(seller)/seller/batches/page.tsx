@@ -349,7 +349,7 @@ export default function BatchesPage() {
                             <AlertDialogTitle>Delete Batch</AlertDialogTitle>
                             <AlertDialogDescription>
                               Are you sure you want to delete this batch? This action cannot be undone. 
-                              If this batch is being used by any products, you'll need to remove or reassign those products first.
+                              If this batch is being used by any products, you&apos;ll need to remove or reassign those products first.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

@@ -291,7 +291,7 @@ export default function ListingsPage() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Listing</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to delete "{product.title}"? This action cannot be undone and will permanently remove the listing.
+                                  Are you sure you want to delete &quot;{product.title}&quot;? This action cannot be undone and will permanently remove the listing.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
