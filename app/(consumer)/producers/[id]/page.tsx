@@ -50,15 +50,13 @@ export default async function ProducerPage({ params }: ProducerPageProps) {
     <div className="flex flex-col">
       {/* Cover Image */}
       <div className="h-48 md:h-64 relative bg-gradient-to-br from-amber-200 to-amber-400">
-        {producer.coverImage && (
-          <Image
-            src={producer.coverImage}
-            alt={producer.businessName}
-            fill
-            className="object-cover"
-            priority
-          />
-        )}
+        <Image
+          src={producer.coverImage || '/images/AI_generated_honey.jpg'}
+          alt={producer.businessName}
+          fill
+          className="object-cover"
+          priority
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
       </div>
 
@@ -85,18 +83,16 @@ export default async function ProducerPage({ params }: ProducerPageProps) {
             <div className="flex-1 pb-2">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl md:text-3xl font-bold">{producer.businessName}</h1>
-                {producer.badgeLevel !== 'none' && (
-                  <Badge
-                    className={`gap-1 ${
-                      producer.badgeLevel === 'premium'
-                        ? 'bg-amber-500 hover:bg-amber-600'
-                        : 'bg-green-500 hover:bg-green-600'
-                    }`}
-                  >
-                    <Shield className="h-3 w-3" />
-                    {producer.badgeLevel === 'premium' ? 'Premium' : 'Verified'}
-                  </Badge>
-                )}
+                <Badge
+                  className={`gap-1 ${
+                    (producer.badgeLevel || 'verified') === 'premium'
+                      ? 'bg-amber-500 hover:bg-amber-600'
+                      : 'bg-green-500 hover:bg-green-600'
+                  }`}
+                >
+                  <Shield className="h-3 w-3" />
+                  {(producer.badgeLevel || 'verified') === 'premium' ? 'Premium' : 'Verified'}
+                </Badge>
               </div>
               <div className="flex items-center gap-1 text-muted-foreground">
                 <MapPin className="h-4 w-4" />

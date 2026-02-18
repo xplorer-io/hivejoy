@@ -465,7 +465,7 @@ export default function SellerRegisterNewPage() {
       if (isUpdating && existingProducerId) {
         router.push('/seller/apply?updated=true');
       } else {
-        router.push('/seller/dashboard?application=submitted');
+        router.push('/seller/application-sent');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit application. Please try again.');

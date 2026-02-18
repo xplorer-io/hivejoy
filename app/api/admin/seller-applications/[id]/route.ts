@@ -211,13 +211,17 @@ export async function PATCH(
       );
     }
 
-    // If approved, update user role to 'producer' in profiles table
+    // When approved: set seller's profile role to 'producer' so they can access the seller dashboard (automatic)
+    let roleUpdated = false;
     if (action === 'approve') {
       const { createAdminClient } = await import('@/lib/supabase/admin');
       const adminClient = createAdminClient();
-      
-      if (adminClient) {
-        // Use admin client to bypass RLS when updating role
+
+      if (!adminClient) {
+        console.error(
+          'SUPABASE_SERVICE_ROLE_KEY is not set. Add it to .env.local so approved sellers get role=producer automatically.'
+        );
+      } else {
         const { error: roleUpdateError } = await adminClient
           .from('profiles')
           .update({ role: 'producer', updated_at: new Date().toISOString() })
@@ -225,17 +229,8 @@ export async function PATCH(
 
         if (roleUpdateError) {
           console.error('Error updating user role to producer:', roleUpdateError);
-          // Don't fail the approval if role update fails, but log it
-        }
-      } else {
-        // Fallback: try with regular client
-        const { error: roleUpdateError } = await supabase
-          .from('profiles')
-          .update({ role: 'producer', updated_at: new Date().toISOString() })
-          .eq('id', userId);
-
-        if (roleUpdateError) {
-          console.error('Error updating user role to producer:', roleUpdateError);
+        } else {
+          roleUpdated = true;
         }
       }
     }
@@ -308,26 +303,13 @@ export async function PATCH(
       // Don't fail the request if email fails
     }
 
-    // If approved, update user role to producer
-    if (action === 'approve') {
-      const { data: producerData } = await supabase
-        .from('producers')
-        .select('user_id')
-        .eq('id', id)
-        .single();
-
-      if (producerData && (producerData as { user_id?: string }).user_id) {
-        await supabase
-          .from('profiles')
-          .update({ role: 'producer' })
-          .eq('id', (producerData as { user_id: string }).user_id);
-      }
-    }
-
     return NextResponse.json({
       success: true,
       application: updatedProducer,
       message: `Application ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'marked for changes'} successfully`,
+      ...(action === 'approve' && !roleUpdated && {
+        warning: 'Seller role was not updated. Add SUPABASE_SERVICE_ROLE_KEY to .env.local and restart the app so future approvals set role automatically.',
+      }),
     });
   } catch (error) {
     console.error('Error updating seller application:', error);

@@ -7,14 +7,19 @@ export {
   searchProducts,
 } from './database';
 
-// Producers
+// Producers - Use database functions instead of mock data
 export {
   getProducers,
   getProducer,
-  getProducerListings,
   getFeaturedProducers,
-  getProducerStats,
-} from './producers';
+  getProducerByUserId,
+} from './database';
+
+// Producer listings - use database
+export { getProductsByProducer as getProducerListings } from './database';
+
+// Producer stats - keep mock for now (or implement in database)
+export { getProducerStats } from './producers';
 
 // Batches
 // Note: getBatchesByProducer and createBatch are server-side only

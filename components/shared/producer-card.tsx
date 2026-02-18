@@ -59,7 +59,9 @@ export function ProducerCard({ producer }: ProducerCardProps) {
           </Avatar>
 
           <div className="pt-3">
+            {(producer.badgeLevel === 'premium' || producer.badgeLevel === 'verified') && (
             <ProducerBadge level={producer.badgeLevel} />
+          )}
           </div>
         </div>
 

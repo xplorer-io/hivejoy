@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useAuthStore, useCartStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
@@ -17,9 +18,20 @@ import { ShoppingCart, User, Search, Menu, Store, Shield } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export function Header() {
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, setUser } = useAuthStore();
   const itemCount = useCartStore((state) => state.getItemCount());
   const hasHydrated = useCartStore((state) => state.hasHydrated);
+
+  // Refresh user from DB so role is current (e.g. after admin approves seller application)
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    fetch('/api/auth/user', { cache: 'no-store', credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.user) setUser(data.user);
+      })
+      .catch(() => {});
+  }, [isAuthenticated, user?.id, setUser]);
 
   const handleLogout = async () => {
     try {
@@ -48,24 +60,51 @@ export function Header() {
         <nav className="hidden md:flex items-center gap-6 ml-4 md:ml-0">
           <Link
             href="/products"
-            className="text-sm font-medium hover:text-primary transition-colors">
+            className="text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors font-semibold">
             Browse Honey
           </Link>
           <Link
             href="/producers"
-            className="text-sm font-medium hover:text-primary transition-colors">
+            className="text-sm font-medium text-black hover:text-gray-700 transition-colors">
             Our Producers
           </Link>
-          <Link
-            href="/seller/apply"
-            className="text-sm font-medium hover:text-primary transition-colors">
-            Become a Seller
-          </Link>
-          <Link
-            href="/about"
-            className="text-sm font-medium hover:text-primary transition-colors">
-            About Us
-          </Link>
+          {(user?.role === 'producer' || user?.role === 'admin') ? (
+            <>
+              <Link
+                href="/seller/dashboard"
+                className="text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors font-semibold">
+                Seller Dashboard
+              </Link>
+              <Link
+                href="/our-story"
+                className="text-sm font-medium text-black hover:text-gray-700 transition-colors">
+                Our Story
+              </Link>
+              <Link
+                href="/about"
+                className="text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors font-semibold">
+                About Us
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/seller/apply"
+                className="text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors font-semibold">
+                Become a Seller
+              </Link>
+              <Link
+                href="/our-story"
+                className="text-sm font-medium text-black hover:text-gray-700 transition-colors">
+                Our Story
+              </Link>
+              <Link
+                href="/about"
+                className="text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors font-semibold">
+                About Us
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Search - Desktop */}
@@ -100,7 +139,16 @@ export function Header() {
           </Button>
 
           {isAuthenticated ? (
-            <DropdownMenu>
+            <DropdownMenu
+              onOpenChange={(open) => {
+                if (open) {
+                  fetch('/api/auth/user', { cache: 'no-store', credentials: 'include' })
+                    .then((r) => r.json())
+                    .then((d) => { if (d.success && d.user) setUser(d.user); })
+                    .catch(() => {});
+                }
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
                   <User className="h-5 w-5" />
@@ -163,30 +211,50 @@ export function Header() {
               <nav className="flex flex-col gap-4 mt-8">
                 <Link
                   href="/products"
-                  className="text-lg font-medium hover:text-primary">
+                  className="text-lg font-medium text-amber-600 hover:text-amber-700 font-semibold">
                   Browse Honey
                 </Link>
                 <Link
                   href="/producers"
-                  className="text-lg font-medium hover:text-primary">
+                  className="text-lg font-medium text-black hover:text-gray-700">
                   Our Producers
                 </Link>
-                <Link
-                  href="/seller/apply"
-                  className="text-lg font-medium hover:text-primary">
-                  Become a Seller
-                </Link>
-                <Link
-                  href="/about"
-                  className="text-lg font-medium hover:text-primary">
-                  About Us
-                </Link>
-                {user?.role === 'producer' && (
-                  <Link
-                    href="/seller/dashboard"
-                    className="text-lg font-medium hover:text-primary">
-                    Seller Dashboard
-                  </Link>
+                {(user?.role === 'producer' || user?.role === 'admin') ? (
+                  <>
+                    <Link
+                      href="/seller/dashboard"
+                      className="text-lg font-medium text-amber-600 hover:text-amber-700 font-semibold">
+                      Seller Dashboard
+                    </Link>
+                    <Link
+                      href="/our-story"
+                      className="text-lg font-medium text-black hover:text-gray-700">
+                      Our Story
+                    </Link>
+                    <Link
+                      href="/about"
+                      className="text-lg font-medium text-amber-600 hover:text-amber-700 font-semibold">
+                      About Us
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/seller/apply"
+                      className="text-lg font-medium text-amber-600 hover:text-amber-700 font-semibold">
+                      Become a Seller
+                    </Link>
+                    <Link
+                      href="/our-story"
+                      className="text-lg font-medium text-black hover:text-gray-700">
+                      Our Story
+                    </Link>
+                    <Link
+                      href="/about"
+                      className="text-lg font-medium text-amber-600 hover:text-amber-700 font-semibold">
+                      About Us
+                    </Link>
+                  </>
                 )}
                 {user?.role === 'admin' && (
                   <Link

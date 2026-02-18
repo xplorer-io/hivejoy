@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getProduct } from '@/lib/api/database';
 
 /**
@@ -64,16 +65,13 @@ export async function PATCH(
       );
     }
 
-    // Get user's producer
-    const { data: producersData } = await supabase
+    const { data: producersList } = await supabase
       .from('producers')
       .select('id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .eq('user_id', user.id);
 
-    if (!producersData || product.producerId !== (producersData as { id: string }).id) {
+    const producerIds = (producersList as { id: string }[] | null)?.map((p) => p.id) ?? [];
+    if (producerIds.length === 0 || !producerIds.includes(product.producerId)) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. This product does not belong to you.' },
         { status: 403 }
@@ -144,6 +142,126 @@ export async function PATCH(
     });
   } catch (error) {
     console.error('Error updating product:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Delete a product
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Please sign in first.' },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
+
+    // Verify the product belongs to the user's producer
+    const product = await getProduct(id);
+    if (!product) {
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    const { data: producersList } = await supabase
+      .from('producers')
+      .select('id')
+      .eq('user_id', user.id);
+
+    const producerIds = (producersList as { id: string }[] | null)?.map((p) => p.id) ?? [];
+    if (producerIds.length === 0 || !producerIds.includes(product.producerId)) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. This product does not belong to you.' },
+        { status: 403 }
+      );
+    }
+
+    // Delete variants first (due to foreign key constraint)
+    const adminClient = createAdminClient();
+    const clientToUse = adminClient || supabase;
+    
+    const { error: variantsError } = await clientToUse
+      .from('product_variants')
+      .delete()
+      .eq('product_id', id);
+
+    if (variantsError) {
+      console.error('[DELETE /api/products] Error deleting variants:', variantsError);
+      return NextResponse.json(
+        { success: false, error: 'Failed to delete product variants' },
+        { status: 500 }
+      );
+    }
+
+    // Delete the product
+    const deleteResult = await clientToUse
+      .from('products')
+      .delete()
+      .eq('id', id);
+    
+    const deleteError = deleteResult.error;
+
+    if (deleteError) {
+      console.error('[DELETE /api/products] Error deleting product:', deleteError);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: deleteError.message || 'Failed to delete product. Please check if you have the necessary permissions.' 
+        },
+        { status: 500 }
+      );
+    }
+
+    // Verify deletion by trying to fetch the product
+    const verifyClient = adminClient || supabase;
+    const { data: verifyData, error: verifyError } = await verifyClient
+      .from('products')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (verifyError) {
+      console.error('[DELETE /api/products] Error verifying product deletion:', verifyError);
+      // Still return success since the delete operation completed
+    } else if (verifyData) {
+      console.error('[DELETE /api/products] WARNING: Product still exists after deletion!');
+      const errorMsg = adminClient 
+        ? 'Product deletion failed - product still exists in database. This may be a database constraint issue.'
+        : 'Product deletion failed - product still exists in database. Please check RLS policies or configure SUPABASE_SERVICE_ROLE_KEY.';
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: errorMsg
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[DELETE /api/products/${id}] Product deleted successfully`);
+    return NextResponse.json({
+      success: true,
+      message: 'Product deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting product:', error);
     return NextResponse.json(
       {
         success: false,
