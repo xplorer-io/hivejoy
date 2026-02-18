@@ -15,7 +15,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Users, Ban, ShieldOff, Shield, Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Users, Ban, ShieldOff, Shield, Loader2, UserX } from 'lucide-react';
 import Link from 'next/link';
 
 interface Seller {
@@ -42,13 +44,14 @@ export default function SellersPage() {
     open: boolean;
     sellerId: string;
     sellerName: string;
-    action: 'suspend' | 'ban' | 'reactivate' | null;
+    action: 'suspend' | 'ban' | 'remove' | 'reactivate' | null;
   }>({
     open: false,
     sellerId: '',
     sellerName: '',
     action: null,
   });
+  const [actionReason, setActionReason] = useState('');
 
   useEffect(() => {
     fetchSellers();
@@ -77,7 +80,10 @@ export default function SellersPage() {
     }
   }
 
-  async function handleAction(sellerId: string, action: 'suspend' | 'ban' | 'reactivate') {
+  const needsReason = actionDialog.action === 'suspend' || actionDialog.action === 'ban' || actionDialog.action === 'remove';
+
+  async function handleAction(sellerId: string, action: 'suspend' | 'ban' | 'remove' | 'reactivate', reason?: string) {
+    if ((action === 'suspend' || action === 'ban' || action === 'remove') && !reason?.trim()) return;
     setProcessing(sellerId);
     setError(null);
 
@@ -85,7 +91,7 @@ export default function SellersPage() {
       const response = await fetch(`/api/admin/sellers/${sellerId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...(reason?.trim() ? { reason: reason.trim() } : {}) }),
       });
 
       const result = await response.json();
@@ -99,6 +105,7 @@ export default function SellersPage() {
       // Refresh sellers list
       await fetchSellers();
       setActionDialog({ open: false, sellerId: '', sellerName: '', action: null });
+      setActionReason('');
     } catch (err) {
       console.error('Failed to update seller status:', err);
       setError('Failed to update seller status. Please try again.');
@@ -161,6 +168,7 @@ export default function SellersPage() {
           {sellers.map((seller) => {
             const profileStatus = seller.profiles?.status || 'active';
             const isProcessing = processing === seller.id;
+            const isAdminSeller = seller.profiles?.role === 'admin';
 
             return (
               <Card key={seller.id}>
@@ -170,6 +178,9 @@ export default function SellersPage() {
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-semibold">{seller.business_name}</h3>
                         {getStatusBadge(profileStatus)}
+                        {isAdminSeller && (
+                          <Badge variant="secondary" className="bg-muted">Admin</Badge>
+                        )}
                       </div>
                       {seller.profiles?.email && (
                         <p className="text-sm text-muted-foreground mb-2">
@@ -187,33 +198,56 @@ export default function SellersPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() =>
+                            onClick={() => {
+                              setActionReason('');
                               setActionDialog({
                                 open: true,
                                 sellerId: seller.id,
                                 sellerName: seller.business_name,
                                 action: 'suspend',
-                              })
-                            }
-                            disabled={isProcessing}
+                              });
+                            }}
+                            disabled={isProcessing || isAdminSeller}
                             className="gap-2"
+                            title={isAdminSeller ? 'Admins cannot be suspended' : undefined}
                           >
                             <ShieldOff className="h-4 w-4" />
                             Suspend
                           </Button>
                           <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setActionReason('');
+                              setActionDialog({
+                                open: true,
+                                sellerId: seller.id,
+                                sellerName: seller.business_name,
+                                action: 'remove',
+                              });
+                            }}
+                            disabled={isProcessing || isAdminSeller}
+                            className="gap-2"
+                            title={isAdminSeller ? 'Admins cannot be removed' : undefined}
+                          >
+                            <UserX className="h-4 w-4" />
+                            Remove
+                          </Button>
+                          <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() =>
+                            onClick={() => {
+                              setActionReason('');
                               setActionDialog({
                                 open: true,
                                 sellerId: seller.id,
                                 sellerName: seller.business_name,
                                 action: 'ban',
-                              })
-                            }
-                            disabled={isProcessing}
+                              });
+                            }}
+                            disabled={isProcessing || isAdminSeller}
                             className="gap-2"
+                            title={isAdminSeller ? 'Admins cannot be banned' : undefined}
                           >
                             <Ban className="h-4 w-4" />
                             Ban
@@ -223,14 +257,15 @@ export default function SellersPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() =>
+                          onClick={() => {
+                            setActionReason('');
                             setActionDialog({
                               open: true,
                               sellerId: seller.id,
                               sellerName: seller.business_name,
                               action: 'reactivate',
-                            })
-                          }
+                            });
+                          }}
                           disabled={isProcessing}
                           className="gap-2"
                         >
@@ -254,9 +289,10 @@ export default function SellersPage() {
 
       <AlertDialog
         open={actionDialog.open}
-        onOpenChange={(open) =>
-          setActionDialog({ ...actionDialog, open })
-        }
+        onOpenChange={(open) => {
+          if (!open) setActionReason('');
+          setActionDialog({ ...actionDialog, open });
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -264,37 +300,63 @@ export default function SellersPage() {
               {actionDialog.action === 'suspend'
                 ? 'Suspend Seller'
                 : actionDialog.action === 'ban'
-                ? 'Ban Seller'
-                : 'Reactivate Seller'}
+                  ? 'Ban Seller'
+                  : actionDialog.action === 'remove'
+                    ? 'Remove Seller'
+                    : 'Reactivate Seller'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {actionDialog.action === 'suspend'
-                ? `Are you sure you want to suspend ${actionDialog.sellerName}? They will not be able to access their seller account or create new listings.`
+                ? `Are you sure you want to suspend ${actionDialog.sellerName}? They will not be able to access their seller account or create new listings. An email with your reason will be sent to the seller.`
                 : actionDialog.action === 'ban'
-                ? `Are you sure you want to ban ${actionDialog.sellerName}? This action is permanent and they will not be able to access their account.`
-                : `Are you sure you want to reactivate ${actionDialog.sellerName}? They will regain access to their seller account.`}
+                  ? `Are you sure you want to ban ${actionDialog.sellerName}? This action is permanent and they will not be able to access their account. An email with your reason will be sent.`
+                  : actionDialog.action === 'remove'
+                    ? `Remove ${actionDialog.sellerName} as a seller? They will lose seller access and an email with your reason will be sent.`
+                    : `Are you sure you want to reactivate ${actionDialog.sellerName}? They will regain access to their seller account.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {needsReason && (
+            <div className="space-y-2 py-2">
+              <Label htmlFor="action-reason">Reason (required)</Label>
+              <Textarea
+                id="action-reason"
+                placeholder="Enter the reason for this action. The seller will receive this in an email."
+                value={actionReason}
+                onChange={(e) => setActionReason(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() =>
                 actionDialog.action &&
-                handleAction(actionDialog.sellerId, actionDialog.action)
+                handleAction(
+                  actionDialog.sellerId,
+                  actionDialog.action,
+                  needsReason ? actionReason : undefined
+                )
               }
+              disabled={needsReason && !actionReason.trim()}
               className={
                 actionDialog.action === 'ban'
                   ? 'bg-red-600 hover:bg-red-700'
                   : actionDialog.action === 'suspend'
-                  ? 'bg-orange-600 hover:bg-orange-700'
-                  : ''
+                    ? 'bg-orange-600 hover:bg-orange-700'
+                    : actionDialog.action === 'remove'
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : ''
               }
             >
               {actionDialog.action === 'suspend'
                 ? 'Suspend'
                 : actionDialog.action === 'ban'
-                ? 'Ban'
-                : 'Reactivate'}
+                  ? 'Ban'
+                  : actionDialog.action === 'remove'
+                    ? 'Remove'
+                    : 'Reactivate'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

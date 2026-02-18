@@ -29,11 +29,33 @@ export interface SellerRegistrationEmailData {
 }
 
 /**
- * Send email notification to agent when a new seller registers
+ * Normalize recipient(s) to a non-empty array of emails.
+ * Supports: single email, array of emails, or comma-separated SENDGRID_ADMIN_EMAILS / SENDGRID_AGENT_EMAIL.
+ */
+function normalizeRecipientEmails(recipients?: string | string[]): string[] {
+  if (Array.isArray(recipients) && recipients.length > 0) {
+    return recipients.filter((e) => typeof e === 'string' && e.trim().length > 0);
+  }
+  if (typeof recipients === 'string' && recipients.trim().length > 0) {
+    return [recipients.trim()];
+  }
+  const envList = process.env.SENDGRID_ADMIN_EMAILS || process.env.SENDGRID_AGENT_EMAIL;
+  if (envList) {
+    return envList
+      .split(',')
+      .map((e) => e.trim())
+      .filter((e) => e.length > 0);
+  }
+  return [];
+}
+
+/**
+ * Send email notification to all admins when a new seller registers.
+ * Recipients: pass array of emails, or leave unset to use SENDGRID_ADMIN_EMAILS / SENDGRID_AGENT_EMAIL.
  */
 export async function sendSellerRegistrationEmail(
   data: SellerRegistrationEmailData,
-  agentEmail?: string
+  recipientEmails?: string | string[]
 ): Promise<{ success: boolean; error?: string }> {
   // Check if SendGrid is configured
   if (!process.env.SENDGRID_API_KEY) {
@@ -41,12 +63,10 @@ export async function sendSellerRegistrationEmail(
     return { success: false, error: 'SendGrid API key is not configured' };
   }
 
-  // Use provided email, environment variable, or default to adarsha.aryal653@gmail.com
-  const recipientEmail = agentEmail || process.env.SENDGRID_AGENT_EMAIL || 'adarsha.aryal653@gmail.com';
-
-  if (!recipientEmail) {
-    console.warn('Agent email is not configured. Email notification skipped.');
-    return { success: false, error: 'Agent email is not configured' };
+  const toList = normalizeRecipientEmails(recipientEmails);
+  if (toList.length === 0) {
+    console.warn('No admin/agent emails configured. Email notification skipped.');
+    return { success: false, error: 'No recipient emails configured' };
   }
 
   try {
@@ -176,7 +196,7 @@ User ID: ${data.userId}
     `;
 
     const msg = {
-      to: recipientEmail,
+      to: toList,
       from: process.env.SENDGRID_FROM_EMAIL || 'noreply@hivejoy.com',
       subject: `🍯 New Seller Registration: ${data.businessName}`,
       text: emailText,
@@ -545,6 +565,88 @@ If you have any questions, please contact our support team.
     return { success: true };
   } catch (error) {
     console.error('Error sending application status update email:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Send email when a seller is suspended, banned, or removed (admin action with reason)
+ */
+export async function sendSellerStatusChangeEmail(data: {
+  businessName: string;
+  email: string;
+  action: 'suspend' | 'ban' | 'remove';
+  reason: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!process.env.SENDGRID_API_KEY) {
+    console.warn('SendGrid API key is not configured. Email notification skipped.');
+    return { success: false, error: 'SendGrid API key is not configured' };
+  }
+  if (!data.email?.trim()) {
+    return { success: false, error: 'Seller email is not provided' };
+  }
+
+  const subject =
+    data.action === 'suspend'
+      ? `🍯 Your Hive Joy seller account has been suspended`
+      : data.action === 'ban'
+        ? `🍯 Your Hive Joy seller account has been banned`
+        : `🍯 You have been removed as a seller on Hive Joy`;
+
+  const title =
+    data.action === 'suspend'
+      ? 'Account suspended'
+      : data.action === 'ban'
+        ? 'Account banned'
+        : 'Seller access removed';
+
+  const intro =
+    data.action === 'suspend'
+      ? 'Your seller account has been suspended. You will not be able to access the seller dashboard or create new listings until further notice.'
+      : data.action === 'ban'
+        ? 'Your seller account has been permanently banned. You will no longer be able to access your seller account on Hive Joy.'
+        : 'You have been removed as a seller on Hive Joy and can no longer access the seller dashboard.';
+
+  const bgColor =
+    data.action === 'suspend' ? '#ea580c' : data.action === 'ban' || data.action === 'remove' ? '#dc2626' : '#6b7280';
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, ${bgColor} 0%, ${bgColor}dd 100%); padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">🍯 ${title}</h1>
+        </div>
+        <div style="background: #fff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px;">Hello ${escapeHtml(data.businessName)},</p>
+          <p style="font-size: 16px;">${intro}</p>
+          <div style="background: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid ${bgColor};">
+            <h2 style="margin-top: 0; font-size: 18px;">Reason</h2>
+            <p style="margin: 0; white-space: pre-wrap;">${escapeHtml(data.reason)}</p>
+          </div>
+          <p style="font-size: 14px; color: #6b7280;">If you believe this was a mistake, please contact our support team.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const emailText = `${title}\n\nHello ${data.businessName},\n\n${intro}\n\nReason:\n${data.reason}\n\nIf you believe this was a mistake, please contact our support team.`;
+
+  try {
+    await sgMail.send({
+      to: data.email.trim(),
+      from: process.env.SENDGRID_FROM_EMAIL || 'noreply@hivejoy.com',
+      subject,
+      text: emailText,
+      html: emailHtml,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending seller status change email:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

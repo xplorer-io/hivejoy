@@ -20,7 +20,7 @@ export function ProvenanceDisplay({ batch, producer, compact = false }: Provenan
   if (compact) {
     return (
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        {producer.badgeLevel !== 'none' && (
+        {((producer.badgeLevel || 'verified') !== 'none') && (
           <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">
             <Shield className="h-3 w-3" />
             Verified Producer
@@ -45,10 +45,10 @@ export function ProvenanceDisplay({ batch, producer, compact = false }: Provenan
           <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
             Provenance
           </h3>
-          {producer.badgeLevel !== 'none' && (
+          {((producer.badgeLevel || 'verified') !== 'none') && (
             <Badge className="gap-1 bg-amber-500 hover:bg-amber-600">
               <Shield className="h-3 w-3" />
-              {producer.badgeLevel === 'premium' ? 'Premium Producer' : 'Verified Producer'}
+              {(producer.badgeLevel || 'verified') === 'premium' ? 'Premium Producer' : 'Verified Producer'}
             </Badge>
           )}
         </div>

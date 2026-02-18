@@ -10,7 +10,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Product } from '@/types';
-import { Plus, Package, Edit } from 'lucide-react';
+import { Plus, Package, Edit, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const statusColors: Record<Product['status'], string> = {
   draft: 'bg-gray-100 text-gray-800',
@@ -32,6 +43,8 @@ export default function ListingsPage() {
   const { user } = useAuthStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [justDeleted, setJustDeleted] = useState(false);
 
   useEffect(() => {
     async function fetchProducts() {
@@ -77,7 +90,92 @@ export default function ListingsPage() {
     }
 
     fetchProducts();
-  }, [user]);
+  }, [user, justDeleted]);
+
+  const handleDelete = async (productId: string) => {
+    if (!confirm('Are you sure you want to delete this listing? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeletingId(productId);
+    setJustDeleted(true);
+
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      console.log('[ListingsPage] Delete response:', response.status, data);
+
+      if (response.ok && data.success) {
+        // Optimistically remove from list
+        setProducts(products.filter((p) => p.id !== productId));
+        
+        // Verify deletion by re-fetching after a short delay
+        setTimeout(async () => {
+          // Re-fetch products to verify deletion
+          try {
+            const producerResponse = await fetch('/api/producers/me');
+            if (!producerResponse.ok) {
+              setJustDeleted(false);
+              return;
+            }
+            
+            const producerData = await producerResponse.json();
+            if (!producerData.success || !producerData.producer) {
+              setJustDeleted(false);
+              return;
+            }
+
+            const productsResponse = await fetch(`/api/producers/${producerData.producer.id}/products`);
+            const productsData = await productsResponse.json();
+            
+            if (productsData.success && productsData.products) {
+              const stillExists = productsData.products.some((p: Product) => p.id === productId);
+              if (stillExists) {
+                console.warn('[ListingsPage] Product still exists after deletion!');
+                alert('Product deletion may have failed. Refreshing list...');
+                setProducts(productsData.products);
+              } else {
+                console.log('[ListingsPage] Product successfully deleted');
+                setProducts(productsData.products);
+              }
+            }
+          } catch (error) {
+            console.error('[ListingsPage] Error verifying deletion:', error);
+          }
+          setJustDeleted(false);
+        }, 500);
+      } else {
+        setJustDeleted(false);
+        alert(data.error || 'Failed to delete listing');
+        // Refresh the list to show current state
+        try {
+          const producerResponse = await fetch('/api/producers/me');
+          if (producerResponse.ok) {
+            const producerData = await producerResponse.json();
+            if (producerData.success && producerData.producer) {
+              const productsResponse = await fetch(`/api/producers/${producerData.producer.id}/products`);
+              const productsData = await productsResponse.json();
+              if (productsData.success && productsData.products) {
+                setProducts(productsData.products);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to refresh products:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete listing:', error);
+      alert('Failed to delete listing. Please try again.');
+      setJustDeleted(false);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -130,8 +228,9 @@ export default function ListingsPage() {
       ) : (
         <div className="space-y-4">
           {products.map((product) => {
-            const lowestPrice = Math.min(...product.variants.map((v) => v.price));
-            const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
+            // Get price and stock from the first (and only) variant
+            const price = product.variants[0]?.price || 0;
+            const totalStock = product.variants[0]?.stock || 0;
 
             return (
               <Card key={product.id}>
@@ -159,7 +258,7 @@ export default function ListingsPage() {
                         <div>
                           <h3 className="font-semibold line-clamp-1">{product.title}</h3>
                           <p className="text-sm text-muted-foreground line-clamp-1">
-                            {product.variants.length} variant(s) • {totalStock} in stock
+                            {totalStock} in stock
                           </p>
                         </div>
                         <Badge className={statusColors[product.status]}>
@@ -168,13 +267,45 @@ export default function ListingsPage() {
                       </div>
 
                       <div className="flex items-center justify-between mt-4">
-                        <p className="font-semibold">From ${lowestPrice.toFixed(2)}</p>
-                        <Link href={`/seller/listings/${product.id}`}>
-                          <Button variant="outline" size="sm" className="gap-2">
-                            <Edit className="h-3 w-3" />
-                            Edit
-                          </Button>
-                        </Link>
+                        <p className="font-semibold">${price.toFixed(2)}</p>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/seller/listings/${product.id}`}>
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <Edit className="h-3 w-3" />
+                              Edit
+                            </Button>
+                          </Link>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-2 text-destructive hover:text-destructive"
+                                disabled={deletingId === product.id}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                Delete
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{product.title}"? This action cannot be undone and will permanently remove the listing.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(product.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  {deletingId === product.id ? 'Deleting...' : 'Delete'}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </div>
                   </div>

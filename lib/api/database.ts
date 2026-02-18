@@ -28,6 +28,7 @@ interface ProducerRow {
   profile_image?: string;
   cover_image?: string;
   verification_status: string;
+  application_status?: string;
   badge_level: string;
   created_at: string;
   updated_at: string;
@@ -100,6 +101,10 @@ export async function getUserProfile(userId: string): Promise<User | null> {
   };
 }
 
+// Default cover image for producers (Hivejoy branded)
+// Using AI_generated_honey.jpg as default until a branded cover is created
+const DEFAULT_COVER_IMAGE = '/images/AI_generated_honey.jpg';
+
 // Helper to convert database row to ProducerProfile
 function mapProducer(row: ProducerRow): ProducerProfile {
   return {
@@ -116,7 +121,7 @@ function mapProducer(row: ProducerRow): ProducerProfile {
     },
     bio: row.bio,
     profileImage: row.profile_image,
-    coverImage: row.cover_image,
+    coverImage: row.cover_image || DEFAULT_COVER_IMAGE,
     verificationStatus: row.verification_status as ProducerProfile['verificationStatus'],
     badgeLevel: row.badge_level as ProducerProfile['badgeLevel'],
     createdAt: row.created_at,
@@ -171,50 +176,83 @@ function mapProduct(row: ProductRow, variants: ProductVariant[] = []): Product {
 
 // ==================== PRODUCERS ====================
 
+// List of producer IDs to exclude (e.g., test accounts, placeholders)
+const EXCLUDED_PRODUCER_IDS = [
+  'b14e8848-e60f-4adf-b96e-db00c5ecc22c',
+  '6bd9c0d5-1cae-4008-be84-3925919be0e1',
+];
+
+/** Shared filter: exclude placeholder/test producer rows */
+function filterValidProducerRows(rows: ProducerRow[]): ProducerRow[] {
+  return rows.filter((row: ProducerRow) => {
+    if (EXCLUDED_PRODUCER_IDS.includes(row.id)) return false;
+    if (!row.business_name || row.business_name.trim() === '') return false;
+    const businessName = row.business_name.trim().toLowerCase();
+    const placeholderNames = [
+      'producer', 'test producer', 'sample producer', 'golden hive apiaries',
+      'sunny meadows honey', 'example producer', 'demo producer', 'test', 'sample',
+    ];
+    if (placeholderNames.some((p) => businessName.includes(p))) return false;
+    if (businessName.includes('@') || /^[a-z0-9._-]+@/.test(businessName)) return false;
+    return true;
+  });
+}
+
 /**
- * Get all approved producers with pagination
+ * Get all approved producers with pagination (includes approved sellers even if they have no products yet)
  */
 export async function getProducers(
   page: number = 1,
   pageSize: number = 12
 ): Promise<PaginatedResponse<ProducerProfile>> {
   const supabase = await createClient();
-  
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize - 1;
 
-  const { data, error, count } = await supabase
+  // Only verified producers (verification_status = 'approved')
+  const { data, error } = await supabase
     .from('producers')
     .select('*', { count: 'exact' })
     .eq('verification_status', 'approved')
-    .order('created_at', { ascending: false })
-    .range(start, end);
+    .neq('business_name', 'Producer')
+    .neq('business_name', '')
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching producers:', error);
-    return {
-      data: [],
-      total: 0,
-      page,
-      pageSize,
-      totalPages: 0,
-    };
+    return { data: [], total: 0, page, pageSize, totalPages: 0 };
   }
 
   const producerData = Array.isArray(data) ? data : [];
+  const validProducers = filterValidProducerRows(producerData);
+  const total = validProducers.length;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  const start = (page - 1) * pageSize;
+  const end = start + pageSize;
+  const paged = validProducers.slice(start, end);
+
   return {
-    data: producerData.map(mapProducer),
-    total: count || 0,
+    data: paged.map(mapProducer),
+    total,
     page,
     pageSize,
-    totalPages: Math.ceil((count || 0) / pageSize),
+    totalPages,
   };
 }
+
 
 /**
  * Get producer by ID
  */
 export async function getProducer(id: string): Promise<ProducerProfile | null> {
+  // Filter out excluded producer IDs
+  if (EXCLUDED_PRODUCER_IDS.includes(id)) {
+    return null;
+  }
+  
+  // Filter out mock producer IDs (e.g., "producer-1", "producer-2")
+  if (id.startsWith('producer-') && /^producer-\d+$/.test(id)) {
+    return null;
+  }
+
   const supabase = await createClient();
   
   const { data, error } = await supabase
@@ -224,6 +262,35 @@ export async function getProducer(id: string): Promise<ProducerProfile | null> {
     .single();
 
   if (error || !data) {
+    return null;
+  }
+
+  // Filter out placeholder producers
+  const businessName = data.business_name?.trim().toLowerCase() || '';
+  const placeholderNames = [
+    'producer',
+    'test producer',
+    'sample producer',
+    'golden hive apiaries',
+    'sunny meadows honey',
+    'example producer',
+    'demo producer',
+    'test',
+    'sample',
+  ];
+  
+  // Check if it's a placeholder name
+  if (!businessName || placeholderNames.some(placeholder => businessName.includes(placeholder))) {
+    return null;
+  }
+  
+  // Check if business name looks like an email
+  if (businessName.includes('@') || /^[a-z0-9._-]+@/.test(businessName)) {
+    return null;
+  }
+
+  // Only show verified producers (verification_status = 'approved')
+  if ((data as ProducerRow).verification_status !== 'approved') {
     return null;
   }
 
@@ -258,36 +325,92 @@ export async function getProducerByUserId(userId: string): Promise<ProducerProfi
 }
 
 /**
- * Get featured producers (all verified sellers)
+ * Get top 3 featured producers for the landing page (by most products, orders, turnover).
+ * "View all" uses getProducers() for the full list.
  */
 export async function getFeaturedProducers(): Promise<ProducerProfile[]> {
-  // Check if Supabase is configured
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  
-  if (!supabaseUrl || !supabaseKey) {
-    // Supabase not configured - return empty array silently
-    return [];
-  }
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) return [];
 
   const supabase = await createClient();
-  
-  const { data, error } = await supabase
+
+  // All verified producers (no limit)
+  const { data: producerRows, error: producersError } = await supabase
     .from('producers')
     .select('*')
     .eq('verification_status', 'approved')
-    .order('created_at', { ascending: false })
-    .limit(12);
+    .neq('business_name', 'Producer')
+    .neq('business_name', '');
 
-  if (error) {
-    // Only log error if it's a real error (not from mock client)
-    if (error.message && error.message !== 'Supabase not configured') {
-      console.error('Error fetching featured producers:', error.message || error);
+  const rowsArray = Array.isArray(producerRows) ? producerRows : [];
+  if (producersError || rowsArray.length === 0) {
+    if (producersError && producersError.message !== 'Supabase not configured') {
+      console.error('Error fetching featured producers:', producersError.message || producersError);
     }
     return [];
   }
 
-  return Array.isArray(data) ? data.map(mapProducer) : [];
+  const validRows = filterValidProducerRows(rowsArray as ProducerRow[]);
+  if (validRows.length === 0) return [];
+
+  const producerIds = validRows.map((r) => r.id);
+  const userToProducer = new Map<string, string>();
+  validRows.forEach((r) => userToProducer.set(r.user_id, r.id));
+
+  // Product count per producer (approved products only)
+  const { data: productsData } = await supabase
+    .from('products')
+    .select('producer_id')
+    .eq('status', 'approved')
+    .in('producer_id', producerIds);
+
+  const productCountByProducer = new Map<string, number>();
+  producerIds.forEach((id) => productCountByProducer.set(id, 0));
+  const productsList: Array<{ producer_id?: string }> = Array.isArray(productsData) ? productsData : [];
+  for (const p of productsList) {
+    if (p.producer_id) {
+      productCountByProducer.set(p.producer_id, (productCountByProducer.get(p.producer_id) || 0) + 1);
+    }
+  }
+
+  // Order count and turnover per seller_id (orders.seller_id = profiles.id = producers.user_id)
+  const { data: ordersData } = await supabase
+    .from('orders')
+    .select('seller_id, total');
+
+  const orderCountByProducer = new Map<string, number>();
+  const turnoverByProducer = new Map<string, number>();
+  producerIds.forEach((id) => {
+    orderCountByProducer.set(id, 0);
+    turnoverByProducer.set(id, 0);
+  });
+  const ordersList = Array.isArray(ordersData) ? ordersData : [];
+  ordersList.forEach((o: { seller_id: string | null; total: string | number }) => {
+    const sid = o.seller_id;
+    if (!sid) return;
+    const pid = userToProducer.get(sid);
+    if (!pid) return;
+    const total = typeof o.total === 'string' ? parseFloat(o.total) : Number(o.total);
+    orderCountByProducer.set(pid, (orderCountByProducer.get(pid) || 0) + 1);
+    turnoverByProducer.set(pid, (turnoverByProducer.get(pid) || 0) + total);
+  });
+
+  // Sort by turnover desc, then order count desc, then product count desc; take top 3
+  const scored = validRows.map((row) => ({
+    row,
+    turnover: turnoverByProducer.get(row.id) || 0,
+    orderCount: orderCountByProducer.get(row.id) || 0,
+    productCount: productCountByProducer.get(row.id) || 0,
+  }));
+  scored.sort((a, b) => {
+    if (b.turnover !== a.turnover) return b.turnover - a.turnover;
+    if (b.orderCount !== a.orderCount) return b.orderCount - a.orderCount;
+    return b.productCount - a.productCount;
+  });
+
+  const top3 = scored.slice(0, 3).map((s) => s.row);
+  return top3.map(mapProducer);
 }
 
 // ==================== BATCHES ====================
@@ -429,8 +552,72 @@ export async function getProducts(
     };
   });
 
+  // Filter out placeholder products
+  const validProducts = products.filter((product) => {
+    // Exclude products from excluded producers
+    if (product.producerId && EXCLUDED_PRODUCER_IDS.includes(product.producerId)) {
+      return false;
+    }
+
+    // Exclude products with placeholder titles
+    const title = product.title?.trim().toLowerCase() || '';
+    const placeholderTitles = [
+      'honey',
+      'test',
+      'sample',
+      'product',
+      'test product',
+      'sample product',
+      'example',
+      'demo',
+    ];
+    
+    // Check if title is just a placeholder word
+    if (placeholderTitles.includes(title) || title.length < 3) {
+      return false;
+    }
+
+    // Exclude products from producers with placeholder business names
+    if (product.producer) {
+      const businessName = product.producer.businessName?.trim().toLowerCase() || '';
+      const placeholderNames = [
+        'producer',
+        'test producer',
+        'sample producer',
+        'golden hive apiaries',
+        'sunny meadows honey',
+        'example producer',
+        'demo producer',
+        'test',
+        'sample',
+      ];
+      
+      if (placeholderNames.some(placeholder => businessName.includes(placeholder))) {
+        return false;
+      }
+      
+      // Exclude if business name looks like an email
+      if (businessName.includes('@') || /^[a-z0-9._-]+@/.test(businessName)) {
+        return false;
+      }
+    }
+
+    // Exclude products with "Unknown region" or missing batch info
+    if (product.batch) {
+      const region = product.batch.region?.trim().toLowerCase() || '';
+      if (region === 'unknown region' || region === 'unknown' || !region) {
+        return false;
+      }
+    } else if (!product.batch) {
+      // Exclude products without batch information (should have traceability)
+      return false;
+    }
+
+    return true;
+  });
+
   // Apply additional filters that require relation data (batch, producer)
-  let filtered = products;
+  let filtered = validProducts;
 
   if (filters?.verified) {
     filtered = filtered.filter((p) =>
@@ -505,7 +692,7 @@ export async function getProduct(id: string): Promise<ProductWithDetails | null>
   return {
     ...product,
     producer: mapProducer(data.producer),
-    batch: mapBatch(data.batch),
+    batch: data.batch ? mapBatch(data.batch) : null,
   };
 }
 
@@ -568,14 +755,74 @@ export async function getFeaturedProducts(): Promise<ProductWithDetails[]> {
     return acc;
   }, {});
 
-  return productData.map((row: ProductRowWithRelations) => {
-    const product = mapProduct(row, variantsByProduct[row.id] || []);
-    return {
-      ...product,
-      producer: row.producer ? mapProducer(row.producer) : null,
-      batch: row.batch ? mapBatch(row.batch) : null,
-    };
-  });
+  return productData
+    .map((row: ProductRowWithRelations) => {
+      const product = mapProduct(row, variantsByProduct[row.id] || []);
+      return {
+        ...product,
+        producer: row.producer ? mapProducer(row.producer) : null,
+        batch: row.batch ? mapBatch(row.batch) : null,
+      };
+    })
+    .filter((product) => {
+      // Only return products that have both producer and batch
+      if (!product.producer || !product.batch) {
+        return false;
+      }
+
+      // Exclude products from excluded producers
+      if (product.producerId && EXCLUDED_PRODUCER_IDS.includes(product.producerId)) {
+        return false;
+      }
+
+      // Exclude products with placeholder titles
+      const title = product.title?.trim().toLowerCase() || '';
+      const placeholderTitles = [
+        'honey',
+        'test',
+        'sample',
+        'product',
+        'test product',
+        'sample product',
+        'example',
+        'demo',
+      ];
+      
+      if (placeholderTitles.includes(title) || title.length < 3) {
+        return false;
+      }
+
+      // Exclude products from producers with placeholder business names
+      const businessName = product.producer.businessName?.trim().toLowerCase() || '';
+      const placeholderNames = [
+        'producer',
+        'test producer',
+        'sample producer',
+        'golden hive apiaries',
+        'sunny meadows honey',
+        'example producer',
+        'demo producer',
+        'test',
+        'sample',
+      ];
+      
+      if (placeholderNames.some(placeholder => businessName.includes(placeholder))) {
+        return false;
+      }
+      
+      // Exclude if business name looks like an email
+      if (businessName.includes('@') || /^[a-z0-9._-]+@/.test(businessName)) {
+        return false;
+      }
+
+      // Exclude products with "Unknown region" or missing batch info
+      const region = product.batch.region?.trim().toLowerCase() || '';
+      if (region === 'unknown region' || region === 'unknown' || !region) {
+        return false;
+      }
+
+      return true;
+    });
 }
 
 /**
@@ -738,7 +985,8 @@ export async function createProduct(
 }
 
 /**
- * Save seller declarations to archive
+ * Save seller declarations to archive.
+ * Uses admin client so the insert is not blocked by RLS and profile FK is satisfied server-side.
  */
 export async function saveSellerDeclarations(
   declarationsData: {
@@ -759,9 +1007,11 @@ export async function saveSellerDeclarations(
     userAgent?: string;
   }
 ): Promise<void> {
-  const supabase = await createClient();
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const adminClient = createAdminClient();
+  const client = adminClient ?? (await createClient());
 
-  const { error } = await supabase
+  const { error } = await client
     .from('seller_declarations')
     .insert({
       producer_id: declarationsData.producerId,
@@ -867,11 +1117,11 @@ export async function createProducer(
 
     const userEmail = (profile as { email?: string } | null)?.email || '';
 
-    // Send email to agent (dynamic import to avoid bundling in client code)
+    // Send email to all admins (dynamic import to avoid bundling in client code)
     try {
-      const agentEmail = process.env.SENDGRID_AGENT_EMAIL || 'adarsha.aryal653@gmail.com';
+      const { getAdminEmails } = await import('@/lib/api/get-admin-emails');
       const { sendSellerRegistrationEmail } = await import('@/lib/sendgrid/email');
-      
+      const adminEmails = await getAdminEmails();
       await sendSellerRegistrationEmail(
         {
           businessName: producerData.businessName,
@@ -882,7 +1132,7 @@ export async function createProducer(
           producerId: producer.id,
           userId: producerData.userId,
         },
-        agentEmail
+        adminEmails.length > 0 ? adminEmails : undefined
       );
     } catch (emailError) {
       console.error('Failed to send email notification:', emailError);

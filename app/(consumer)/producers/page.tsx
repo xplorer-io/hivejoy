@@ -2,7 +2,7 @@ import { getProducers } from '@/lib/api';
 import { ProducerCard } from '@/components/shared';
 
 export default async function ProducersPage() {
-  const { data: producers } = await getProducers();
+  const { data: producers } = await getProducers(1, 100);
 
   return (
     <div className="container px-4 py-8">

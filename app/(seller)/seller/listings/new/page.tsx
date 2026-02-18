@@ -20,14 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Batch } from '@/types';
-import { ChevronLeft, Plus, Trash2, Upload, X, AlertCircle } from 'lucide-react';
-
-interface Variant {
-  id: string;
-  price: string;
-  stock: string;
-  weight: string;
-}
+import { ChevronLeft, Upload, X, AlertCircle } from 'lucide-react';
 
 export default function NewListingPage() {
   const router = useRouter();
@@ -44,9 +37,9 @@ export default function NewListingPage() {
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
-  const [variants, setVariants] = useState<Variant[]>([
-    { id: '1', price: '', stock: '', weight: '' },
-  ]);
+  const [price, setPrice] = useState('');
+  const [stock, setStock] = useState('');
+  const [weight, setWeight] = useState('');
 
   // Get producer ID and fetch batches (producer profile will be auto-created if needed)
   useEffect(() => {
@@ -157,26 +150,6 @@ export default function NewListingPage() {
     setPhotoFiles(photoFiles.filter((_, i) => i !== index));
   };
 
-  const addVariant = () => {
-    const newId = String(variants.length + 1);
-    setVariants([
-      ...variants,
-      { id: newId, price: '', stock: '', weight: '' },
-    ]);
-  };
-
-  const removeVariant = (id: string) => {
-    if (variants.length > 1) {
-      setVariants(variants.filter((v) => v.id !== id));
-    }
-  };
-
-  const updateVariant = (id: string, field: keyof Variant, value: string) => {
-    setVariants(
-      variants.map((v) => (v.id === id ? { ...v, [field]: value } : v))
-    );
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -202,12 +175,9 @@ export default function NewListingPage() {
         return;
       }
 
-      // Validate variants
-      const invalidVariants = variants.some(
-        (v) => !v.price || !v.stock || !v.weight
-      );
-      if (invalidVariants) {
-        setError('Please fill in all variant fields (price, stock, weight).');
+      // Validate price, stock, and weight
+      if (!price || !stock || !weight) {
+        setError('Please fill in price, stock, and weight.');
         setLoading(false);
         return;
       }
@@ -217,7 +187,6 @@ export default function NewListingPage() {
         title: title.trim(),
         description: description.trim(),
         photosCount: photos.length,
-        variantsCount: variants.length,
       });
 
       // Submit to API
@@ -229,11 +198,11 @@ export default function NewListingPage() {
           title: title.trim(),
           description: description.trim(),
           photos,
-          variants: variants.map((v) => ({
-            price: v.price,
-            stock: v.stock,
-            weight: v.weight,
-          })),
+          variants: [{
+            price: price,
+            stock: stock,
+            weight: weight,
+          }],
         }),
       });
 
@@ -416,68 +385,45 @@ export default function NewListingPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Variants & Pricing *</CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={addVariant}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Variant
-              </Button>
-            </div>
+            <CardTitle>Pricing & Details *</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {variants.map((variant) => (
-              <div
-                key={variant.id}
-                className="grid grid-cols-4 gap-4 p-4 rounded-lg bg-muted/50"
-              >
-                <div className="space-y-2">
-                  <Label>Price ($) *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={variant.price}
-                    onChange={(e) => updateVariant(variant.id, 'price', e.target.value)}
-                    placeholder="18.5"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Stock *</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={variant.stock}
-                    onChange={(e) => updateVariant(variant.id, 'stock', e.target.value)}
-                    placeholder="50"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Weight (g) *</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={variant.weight}
-                    onChange={(e) => updateVariant(variant.id, 'weight', e.target.value)}
-                    placeholder="250"
-                    required
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeVariant(variant.id)}
-                    disabled={variants.length === 1}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Price ($) *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="18.5"
+                  required
+                />
               </div>
-            ))}
+              <div className="space-y-2">
+                <Label>Stock *</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value)}
+                  placeholder="50"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Weight (g) *</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="250"
+                  required
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
 

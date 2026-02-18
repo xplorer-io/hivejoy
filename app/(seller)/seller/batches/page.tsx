@@ -9,7 +9,18 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Batch } from '@/types';
 import { DateTime } from 'luxon';
-import { Plus, MapPin, Calendar, Flower2 } from 'lucide-react';
+import { Plus, MapPin, Calendar, Flower2, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const statusColors: Record<Batch['status'], string> = {
   draft: 'bg-gray-100 text-gray-800',
@@ -17,9 +28,21 @@ const statusColors: Record<Batch['status'], string> = {
   archived: 'bg-yellow-100 text-yellow-800',
 };
 
+interface ProductUsingBatch {
+  id: string;
+  title: string;
+  status: string;
+}
+
 export default function BatchesPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [productsUsingBatch, setProductsUsingBatch] = useState<{
+    batchId: string;
+    products: ProductUsingBatch[];
+  } | null>(null);
+  const [justDeleted, setJustDeleted] = useState(false);
 
   useEffect(() => {
     async function fetchBatches() {
@@ -52,14 +75,16 @@ export default function BatchesPage() {
     
     // Refresh batches when page becomes visible (e.g., after navigation)
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
+      if (!document.hidden && !justDeleted) {
         fetchBatches();
       }
     };
     
     // Also listen for focus events (when user switches back to tab)
     const handleFocus = () => {
-      fetchBatches();
+      if (!justDeleted) {
+        fetchBatches();
+      }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -69,7 +94,110 @@ export default function BatchesPage() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, []);
+  }, [justDeleted]);
+
+  const handleDelete = async (batchId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setDeletingId(batchId);
+    setJustDeleted(true);
+
+    try {
+      const response = await fetch(`/api/batches/${batchId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      console.log('[BatchesPage] Delete response:', response.status, data);
+
+      if (response.ok && data.success) {
+        // Optimistically remove from list
+        setBatches(batches.filter((b) => b.id !== batchId));
+        
+        // Verify deletion by re-fetching after a short delay
+        setTimeout(async () => {
+          const verifyResponse = await fetch('/api/batches?t=' + Date.now(), {
+            cache: 'no-store',
+          });
+          const verifyData = await verifyResponse.json();
+          
+          if (verifyData.success && verifyData.batches) {
+            const stillExists = verifyData.batches.some((b: Batch) => b.id === batchId);
+            if (stillExists) {
+              console.warn('[BatchesPage] Batch still exists after deletion!');
+              alert('Batch deletion may have failed. Refreshing list...');
+              setBatches(verifyData.batches);
+            } else {
+              console.log('[BatchesPage] Batch successfully deleted');
+              setBatches(verifyData.batches);
+            }
+          }
+          setJustDeleted(false);
+        }, 500);
+      } else {
+        setJustDeleted(false);
+        // If products are using the batch, show them
+        if (data.products && data.products.length > 0) {
+          setProductsUsingBatch({
+            batchId,
+            products: data.products,
+          });
+        } else {
+          alert(data.error || 'Failed to delete batch');
+        }
+        // Refresh the list to show current state
+        const refreshResponse = await fetch('/api/batches?t=' + Date.now(), {
+          cache: 'no-store',
+        });
+        const refreshData = await refreshResponse.json();
+        if (refreshData.success && refreshData.batches) {
+          setBatches(refreshData.batches);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete batch:', error);
+      alert('Failed to delete batch. Please try again.');
+      setJustDeleted(false);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleRemoveBatchFromProducts = async (productIds: string[]) => {
+    if (!productsUsingBatch) return;
+
+    try {
+      const response = await fetch(`/api/batches/${productsUsingBatch.batchId}/products`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productIds }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Batch removed from ${productIds.length} product(s). You can now delete the batch.`);
+        setProductsUsingBatch(null);
+        // Refresh batches list
+        const refreshResponse = await fetch('/api/batches?t=' + Date.now(), {
+          cache: 'no-store',
+        });
+        const refreshData = await refreshResponse.json();
+        if (refreshData.success && refreshData.batches) {
+          setBatches(refreshData.batches);
+        }
+      } else {
+        alert(data.error || 'Failed to remove batch from products');
+      }
+    } catch (error) {
+      console.error('Failed to remove batch from products:', error);
+      alert('Failed to remove batch from products. Please try again.');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -87,6 +215,69 @@ export default function BatchesPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Products Using Batch Dialog */}
+      {productsUsingBatch && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-lg mb-2">
+                  Cannot Delete Batch
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  This batch is being used by {productsUsingBatch.products.length} product(s). 
+                  Remove the batch reference from these products first.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setProductsUsingBatch(null)}
+              >
+                ×
+              </Button>
+            </div>
+            <div className="space-y-2 mb-4">
+              {productsUsingBatch.products.map((product) => (
+                <div
+                  key={product.id}
+                  className="flex items-center justify-between p-2 bg-white rounded border"
+                >
+                  <div>
+                    <p className="font-medium">{product.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Status: {product.status}
+                    </p>
+                  </div>
+                  <Link href={`/seller/listings/${product.id}`}>
+                    <Button variant="outline" size="sm">
+                      View Product
+                    </Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  const productIds = productsUsingBatch.products.map((p) => p.id);
+                  handleRemoveBatchFromProducts(productIds);
+                }}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                Remove Batch from All Products
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setProductsUsingBatch(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="grid md:grid-cols-2 gap-4">
@@ -124,21 +315,59 @@ export default function BatchesPage() {
             const harvestDate = DateTime.fromISO(batch.harvestDate);
 
             return (
-              <Link key={batch.id} href={`/seller/batches/${batch.id}`}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <p className="font-mono text-sm text-muted-foreground mb-1">
-                          {batch.id}
-                        </p>
-                        <Badge className={statusColors[batch.status]}>
-                          {batch.status}
-                        </Badge>
-                      </div>
+              <Card key={batch.id} className="hover:shadow-md transition-shadow h-full relative">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <p className="font-mono text-sm text-muted-foreground mb-1">
+                        {batch.id}
+                      </p>
+                      <Badge className={statusColors[batch.status]}>
+                        {batch.status}
+                      </Badge>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/seller/batches/${batch.id}`}>
+                        <Button variant="ghost" size="sm">
+                          View
+                        </Button>
+                      </Link>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            disabled={deletingId === batch.id}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Batch</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this batch? This action cannot be undone. 
+                              If this batch is being used by any products, you'll need to remove or reassign those products first.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={(e) => handleDelete(batch.id, e)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              {deletingId === batch.id ? 'Deleting...' : 'Delete'}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
 
-                    <div className="space-y-3">
+                  <Link href={`/seller/batches/${batch.id}`}>
+                    <div className="space-y-3 cursor-pointer">
                       <div className="flex items-center gap-2 text-sm">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <span>{batch.region}</span>
@@ -165,9 +394,9 @@ export default function BatchesPage() {
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                  </Link>
+                </CardContent>
+              </Card>
             );
           })}
         </div>

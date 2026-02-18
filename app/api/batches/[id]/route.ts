@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getBatch } from '@/lib/api/database';
 
 /**
@@ -164,6 +165,174 @@ export async function PATCH(
     });
   } catch (error) {
     console.error('Error updating batch:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Delete a batch
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Please sign in first.' },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
+
+    // Verify the batch belongs to the user's producer
+    const batch = await getBatch(id);
+    if (!batch) {
+      return NextResponse.json(
+        { success: false, error: 'Batch not found' },
+        { status: 404 }
+      );
+    }
+
+    const { data: producersData } = await supabase
+      .from('producers')
+      .select('id')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (!producersData || (producersData as { id: string }[]).length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 403 }
+      );
+    }
+
+    const producerIds = (producersData as { id: string }[]).map(p => p.id);
+    if (!producerIds.includes(batch.producerId)) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. This batch does not belong to you.' },
+        { status: 403 }
+      );
+    }
+
+    // Check if any products are using this batch
+    const { data: productsUsingBatch, error: productsError } = await supabase
+      .from('products')
+      .select('id, title, status')
+      .eq('batch_id', id);
+
+    if (productsError) {
+      console.error('Error checking products:', productsError);
+      return NextResponse.json(
+        { success: false, error: 'Failed to check batch usage' },
+        { status: 500 }
+      );
+    }
+
+    if (productsUsingBatch && productsUsingBatch.length > 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Cannot delete batch. It is being used by ${productsUsingBatch.length} product(s). Please remove or reassign products first.`,
+          products: productsUsingBatch.map((p: { id: string; title: string; status: string }) => ({
+            id: p.id,
+            title: p.title,
+            status: p.status,
+          }))
+        },
+        { status: 400 }
+      );
+    }
+
+    // Delete the batch
+    // Try using admin client first to bypass RLS, fall back to regular client
+    const adminClient = createAdminClient();
+    let deleteError;
+    let deleteResult;
+    
+    if (adminClient) {
+      console.log('[DELETE /api/batches] Using admin client to delete batch');
+      // Use admin client to bypass RLS
+      deleteResult = await adminClient
+        .from('batches')
+        .delete()
+        .eq('id', id);
+      deleteError = deleteResult.error;
+    } else {
+      console.log('[DELETE /api/batches] Admin client not available, using regular client');
+      // Fall back to regular client (will work if RLS policy exists)
+      deleteResult = await supabase
+        .from('batches')
+        .delete()
+        .eq('id', id);
+      deleteError = deleteResult.error;
+    }
+
+    if (deleteError) {
+      console.error('[DELETE /api/batches] Error deleting batch:', deleteError);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: deleteError.message || 'Failed to delete batch. Please check if you have the necessary permissions or run the migration to add the DELETE policy.' 
+        },
+        { status: 500 }
+      );
+    }
+
+    // Check if any rows were actually deleted
+    if (deleteResult && 'count' in deleteResult && deleteResult.count === 0) {
+      console.error('[DELETE /api/batches] No rows deleted - likely RLS policy issue');
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Batch deletion failed - no rows were deleted. This usually means the RLS DELETE policy is missing. Please run the migration: migrations/add_batches_delete_policy.sql' 
+        },
+        { status: 500 }
+      );
+    }
+
+    // Verify deletion by trying to fetch the batch
+    const verifyClient = adminClient || supabase;
+    const { data: verifyData, error: verifyError } = await verifyClient
+      .from('batches')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (verifyError) {
+      console.error('[DELETE /api/batches] Error verifying batch deletion:', verifyError);
+      // Still return success since the delete operation completed
+    } else if (verifyData) {
+      console.error('[DELETE /api/batches] WARNING: Batch still exists after deletion!');
+      const errorMsg = adminClient 
+        ? 'Batch deletion failed - batch still exists in database. This may be a database constraint issue.'
+        : 'Batch deletion failed - batch still exists in database. Please run the migration: migrations/add_batches_delete_policy.sql or configure SUPABASE_SERVICE_ROLE_KEY.';
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: errorMsg
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[DELETE /api/batches/${id}] Batch deleted successfully`);
+    return NextResponse.json({
+      success: true,
+      message: 'Batch deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting batch:', error);
     return NextResponse.json(
       {
         success: false,

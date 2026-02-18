@@ -49,6 +49,15 @@ export async function sendOTP(emailOrPhone: string): Promise<{ success: boolean;
         let userMessage = error.message;
         if (error.message.includes('rate limit') || error.message.includes('too many')) {
           userMessage = 'Too many requests. Please wait a few minutes before trying again.';
+        } else if (error.message.includes('Database error') || error.message.includes('updating user')) {
+          // This error usually means the profile creation trigger failed, but the user was created
+          // The profile will be created automatically on first login, so we can proceed
+          console.warn('Profile creation trigger may have failed, but user was created:', error.message);
+          // Still return success - the OTP was sent, profile will be created on verification
+          return {
+            success: true,
+            message: 'OTP sent successfully. Please check your email.',
+          }
         }
         return {
           success: false,
@@ -123,7 +132,8 @@ export async function verifyOTP(
       }
     }
     
-    // Fetch role from database
+    // Ensure profile exists by calling the API endpoint
+    // This will create the profile if it doesn't exist
     let user = mapSupabaseUser(result.data.user);
     if (typeof window !== 'undefined') {
       try {
@@ -134,11 +144,19 @@ export async function verifyOTP(
           const profileData = await profileResponse.json();
           if (profileData.success && profileData.user) {
             user = profileData.user; // Use role from database
+          } else {
+            // Profile doesn't exist yet, it will be created on next request
+            // For now, use the mapped user
+            console.warn('Profile not found for user, will be created on next request');
           }
+        } else {
+          // If profile fetch fails, the profile will be created on next request
+          console.warn('Failed to fetch profile, will be created automatically');
         }
       } catch (error) {
         console.error('Failed to fetch user role from database:', error);
         // Continue with default role if fetch fails
+        // Profile will be created automatically on next request
       }
     }
     

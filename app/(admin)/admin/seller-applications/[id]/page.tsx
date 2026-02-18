@@ -183,6 +183,10 @@ export default function SellerApplicationDetailPage() {
         return;
       }
 
+      if (result.warning) {
+        window.alert(result.warning);
+      }
+
       // Success - redirect to list
       router.push('/admin/seller-applications');
       router.refresh();
@@ -627,74 +631,6 @@ export default function SellerApplicationDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Section G: Payout & Commercial Details */}
-      {(producer.bank_account_name || producer.gst_registered !== undefined) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>G. Payout & Commercial Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              {producer.bank_account_name && (
-                <div>
-                  <Label className="text-muted-foreground">Bank Account Name</Label>
-                  <p className="font-medium">{producer.bank_account_name}</p>
-                </div>
-              )}
-              {producer.bank_bsb && (
-                <div>
-                  <Label className="text-muted-foreground">BSB</Label>
-                  <p className="font-medium">{producer.bank_bsb}</p>
-                </div>
-              )}
-              {producer.bank_account_number && (
-                <div>
-                  <Label className="text-muted-foreground">Account Number</Label>
-                  <p className="font-medium">***{producer.bank_account_number.slice(-4)}</p>
-                </div>
-              )}
-              <div>
-                <Label className="text-muted-foreground">GST Registered</Label>
-                <p className="font-medium">{producer.gst_registered ? 'Yes' : 'No'}</p>
-              </div>
-              {producer.gst_registered && (
-                <div>
-                  <Label className="text-muted-foreground">GST Included in Pricing</Label>
-                  <p className="font-medium">{producer.gst_included_in_pricing ? 'Yes' : 'No'}</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Section H: Public Profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle>H. Public Seller Profile</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {producer.bio && (
-            <div>
-              <Label className="text-muted-foreground">Bio</Label>
-              <p className="mt-1 whitespace-pre-wrap">{producer.bio}</p>
-            </div>
-          )}
-          {producer.profile_image && (
-            <div>
-              <Label className="text-muted-foreground mb-2 block">Profile Photo</Label>
-              <div className="relative w-32 h-32 rounded-lg overflow-hidden">
-                <Image
-                  src={producer.profile_image}
-                  alt="Profile"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Decision Section */}
       {status === 'pending_review' ? (

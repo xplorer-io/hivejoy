@@ -48,7 +48,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (data.session?.user) {
         // Fetch role from database
         try {
-          const response = await fetch('/api/auth/user');
+          const response = await fetch('/api/auth/user', { cache: 'no-store' });
           const result = await response.json();
           if (result.success && result.user) {
             setUser(result.user);
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (session?.user) {
         // Fetch role from database
         try {
-          const response = await fetch('/api/auth/user');
+          const response = await fetch('/api/auth/user', { cache: 'no-store' });
           const result = await response.json();
           if (result.success && result.user) {
             setUser(result.user);
@@ -94,8 +94,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setLoading(false);
     });
 
+    const onFocus = () => {
+      supabase.auth.getSession().then(({ data }) => {
+        if (!data.session?.user) return;
+        fetch('/api/auth/user', { cache: 'no-store' })
+          .then((r) => r.json())
+          .then((result) => {
+            if (result.success && result.user) setUser(result.user);
+          })
+          .catch(() => {});
+      });
+    };
+    window.addEventListener('focus', onFocus);
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('focus', onFocus);
     };
   }, [setUser, setLoading, supabase]);
 

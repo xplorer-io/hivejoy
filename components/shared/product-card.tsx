@@ -28,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const photo = product.photos?.[0] ?? null;
   const region = product.batch?.region ?? 'Unknown region';
   const producerName = product.producer?.businessName ?? 'Unknown producer';
-  const badgeLevel = product.producer?.badgeLevel ?? 'none';
+  const badgeLevel = product.producer?.badgeLevel ?? 'verified';
 
   return (
     <CardFrame
@@ -61,12 +61,12 @@ export function ProductCard({ product }: ProductCardProps) {
 
           <div className="pt-2">
             <div className="flex items-baseline gap-2">
-              <span className="text-lg font-semibold tracking-tight text-foreground">
-                ${lowestPrice.toFixed(2)}
-              </span>
               {hasMultipleVariants ? (
                 <span className="text-xs text-muted-foreground">from</span>
               ) : null}
+              <span className="text-lg font-semibold tracking-tight text-foreground">
+                ${lowestPrice.toFixed(2)}
+              </span>
             </div>
           </div>
         </div>

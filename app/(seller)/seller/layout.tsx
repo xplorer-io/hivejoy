@@ -81,7 +81,7 @@ export default function SellerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
   const [profileStatus, setProfileStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,9 +93,21 @@ export default function SellerLayout({
         return;
       }
 
-      // If user is already a producer (role === 'producer'), skip verification check
-      // They are already registered and verified
-      if (user.role === 'producer') {
+      // Refetch user from DB so role is up to date (e.g. after admin approves application)
+      let currentRole = user.role;
+      try {
+        const authRes = await fetch('/api/auth/user');
+        const authData = await authRes.json();
+        if (authData.success && authData.user) {
+          setUser(authData.user);
+          currentRole = authData.user.role;
+        }
+      } catch (err) {
+        console.error('Failed to refresh user role:', err);
+      }
+
+      // Producers and admins can access seller area (admins can do everything sellers can)
+      if (currentRole === 'producer' || currentRole === 'admin') {
         setVerificationStatus('approved');
         setLoading(false);
         return;
@@ -125,13 +137,16 @@ export default function SellerLayout({
     }
 
     checkVerification();
-  }, [user]);
+  }, [user?.id, setUser]);
 
-  // Allow access to registration/apply pages for any authenticated user (consumers can become sellers)
+  // Allow access to registration/apply and application-sent pages for any authenticated user (consumers can become sellers)
   const pathname = usePathname();
-  const isRegistrationPage = pathname?.startsWith('/seller/register') || pathname?.startsWith('/seller/apply');
-  
-  // Early return: Always allow access to registration/apply pages
+  const isRegistrationPage =
+    pathname?.startsWith('/seller/register') ||
+    pathname?.startsWith('/seller/apply') ||
+    pathname === '/seller/application-sent';
+
+  // Early return: Always allow access to registration/apply/application-sent pages
   if (isRegistrationPage) {
     return (
       <div className="flex min-h-screen">

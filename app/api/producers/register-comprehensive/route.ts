@@ -446,6 +446,40 @@ export async function POST(request: Request) {
         notes: 'Application submitted',
       });
 
+    // Ensure profile exists before saving declarations (seller_declarations.user_id FK references profiles.id)
+    const adminClientForProfile = createAdminClient();
+    if (adminClientForProfile) {
+      const { data: profileRow } = await adminClientForProfile
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!profileRow) {
+        const { error: insertProfileError } = await adminClientForProfile
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email || body.primaryEmail?.trim() || '',
+            role: 'consumer',
+            status: 'active',
+          });
+
+        if (insertProfileError) {
+          console.error('Failed to ensure profile before declarations:', insertProfileError);
+          // Continue anyway; saveSellerDeclarations may still work if profile was created elsewhere
+        }
+      } else {
+        await adminClientForProfile
+          .from('profiles')
+          .update({
+            email: user.email || body.primaryEmail?.trim() || '',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+      }
+    }
+
     // Save seller declarations to archive (existing function)
     try {
       const { saveSellerDeclarations } = await import('@/lib/api/database');
@@ -471,9 +505,11 @@ export async function POST(request: Request) {
       // Don't fail registration if declarations archive fails
     }
 
-    // Send email notification to agent
+    // Send email notification to all admins
     try {
+      const { getAdminEmails } = await import('@/lib/api/get-admin-emails');
       const { sendSellerRegistrationEmail } = await import('@/lib/sendgrid/email');
+      const adminEmails = await getAdminEmails();
       await sendSellerRegistrationEmail(
         {
           businessName: body.businessName.trim(),
@@ -496,7 +532,7 @@ export async function POST(request: Request) {
           registeringAuthority: body.registeringAuthority,
           applicationId: producer.id,
         },
-        'adarsha.aryal653@gmail.com'
+        adminEmails.length > 0 ? adminEmails : undefined
       );
     } catch (emailError) {
       console.error('Failed to send email notification:', emailError);

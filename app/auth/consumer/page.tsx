@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Mail, KeyRound, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Mail, KeyRound } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { GoogleIcon, FacebookIcon } from '@/components/shared/icons';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,15 +36,9 @@ function ConsumerAuthContent() {
             </div>
             <span className="text-2xl font-bold">Hive Joy</span>
           </Link>
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <ShoppingBag className="h-5 w-5 text-primary" />
-            <CardTitle>Sign In as Consumer</CardTitle>
-          </div>
-          <CardDescription>
-            {step === 'email'
-              ? 'Browse and purchase authentic Australian honey'
-              : `We sent a code to ${email}`}
-          </CardDescription>
+          <CardTitle className="text-center">
+            {step === 'email' ? 'Sign in' : `We sent a code to ${email}`}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {step === 'email' ? (
@@ -152,23 +146,6 @@ function ConsumerAuthContent() {
             </form>
           )}
 
-          <div className="mt-6 pt-6 border-t">
-            <p className="text-center text-sm text-muted-foreground mb-3">
-              Are you a producer or admin?
-            </p>
-            <div className="flex gap-2">
-              <Link href="/auth/producer" className="flex-1">
-                <Button variant="outline" className="w-full" size="sm">
-                  Producer Login
-                </Button>
-              </Link>
-              <Link href="/auth/admin" className="flex-1">
-                <Button variant="outline" className="w-full" size="sm">
-                  Admin Login
-                </Button>
-              </Link>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

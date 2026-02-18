@@ -19,14 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Batch, ProductWithDetails } from '@/types';
-import { ChevronLeft, Plus, Trash2, Upload, X, AlertCircle } from 'lucide-react';
-
-interface Variant {
-  id: string;
-  price: string;
-  stock: string;
-  weight: string;
-}
+import { ChevronLeft, Upload, X, AlertCircle } from 'lucide-react';
 
 export default function EditListingPage() {
   const router = useRouter();
@@ -45,22 +38,28 @@ export default function EditListingPage() {
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
-  const [variants, setVariants] = useState<Variant[]>([
-    { id: '1', price: '', stock: '', weight: '' },
-  ]);
+  const [price, setPrice] = useState('');
+  const [stock, setStock] = useState('');
+  const [weight, setWeight] = useState('');
   const dataLoadedRef = useRef<string | null>(null);
+  const isFetchingRef = useRef(false);
+  const variantsLoadedRef = useRef(false);
 
   // Fetch product data and batches
   useEffect(() => {
     // Reset if productId changed
     if (dataLoadedRef.current !== productId) {
       dataLoadedRef.current = null;
+      isFetchingRef.current = false;
+      variantsLoadedRef.current = false;
       setLoading(true);
-      setVariants([{ id: '1', price: '', stock: '', weight: '' }]);
+      setPrice('');
+      setStock('');
+      setWeight('');
     }
 
     // Prevent running multiple times if data is already loaded for this product
-    if (dataLoadedRef.current === productId) return;
+    if (dataLoadedRef.current === productId || isFetchingRef.current || variantsLoadedRef.current) return;
 
     async function fetchData() {
       if (!user?.id || !productId) {
@@ -68,6 +67,9 @@ export default function EditListingPage() {
         setLoading(false);
         return;
       }
+
+      // Mark as fetching to prevent concurrent fetches
+      isFetchingRef.current = true;
 
       try {
         // Fetch product
@@ -77,6 +79,7 @@ export default function EditListingPage() {
         if (!productData.success || !productData.product) {
           setError('Product not found.');
           setLoading(false);
+          isFetchingRef.current = false;
           return;
         }
 
@@ -88,18 +91,24 @@ export default function EditListingPage() {
         setPhotos(product.photos || []);
         setSelectedBatch(product.batchId);
         
-        // Convert variants to form format
-        // Extract weight from size if weight is not available (for backwards compatibility)
-        if (product.variants && product.variants.length > 0) {
-          setVariants(
-            product.variants.map((v, index) => ({
-              id: String(index + 1),
-              price: String(v.price),
-              stock: String(v.stock),
-              // Use weight if available, otherwise extract from size (e.g., "250g" -> "250")
-              weight: v.weight ? String(v.weight) : (v.size ? v.size.replace(/[^0-9.]/g, '') : ''),
-            }))
-          );
+        // Set price, stock, and weight from the first variant (or only variant)
+        // Only set once - check if they haven't been loaded yet
+        if (!variantsLoadedRef.current) {
+          if (product.variants && product.variants.length > 0) {
+            // Use the first variant (or only variant)
+            const firstVariant = product.variants[0];
+            setPrice(String(firstVariant.price));
+            setStock(String(firstVariant.stock));
+            // Use weight if available, otherwise extract from size (e.g., "250g" -> "250")
+            setWeight(firstVariant.weight ? String(firstVariant.weight) : (firstVariant.size ? firstVariant.size.replace(/[^0-9.]/g, '') : ''));
+          } else {
+            // If no variants, set empty values
+            setPrice('');
+            setStock('');
+            setWeight('');
+          }
+          // Mark variants as loaded to prevent re-setting
+          variantsLoadedRef.current = true;
         }
 
         // Fetch batches
@@ -117,6 +126,7 @@ export default function EditListingPage() {
         setError('Failed to load product. Please try again.');
       } finally {
         setLoading(false);
+        isFetchingRef.current = false;
       }
     }
 
@@ -169,26 +179,6 @@ export default function EditListingPage() {
     setPhotoFiles(photoFiles.filter((_, i) => i !== index));
   };
 
-  const addVariant = () => {
-    const newId = String(variants.length + 1);
-    setVariants([
-      ...variants,
-      { id: newId, price: '', stock: '', weight: '' },
-    ]);
-  };
-
-  const removeVariant = (id: string) => {
-    if (variants.length > 1) {
-      setVariants(variants.filter((v) => v.id !== id));
-    }
-  };
-
-  const updateVariant = (id: string, field: keyof Variant, value: string) => {
-    setVariants(
-      variants.map((v) => (v.id === id ? { ...v, [field]: value } : v))
-    );
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -213,11 +203,9 @@ export default function EditListingPage() {
         return;
       }
 
-      const invalidVariants = variants.some(
-        (v) => !v.price || !v.stock || !v.weight
-      );
-      if (invalidVariants) {
-        setError('Please fill in all variant fields (price, stock, weight).');
+      // Validate price, stock, and weight
+      if (!price || !stock || !weight) {
+        setError('Please fill in price, stock, and weight.');
         setSaving(false);
         return;
       }
@@ -231,13 +219,13 @@ export default function EditListingPage() {
           title: title.trim(),
           description: description.trim(),
           photos,
-          variants: variants.map((v) => ({
+          variants: [{
             // Generate size from weight (e.g., "250g" from weight 250)
-            size: `${parseFloat(v.weight)}g`,
-            price: parseFloat(v.price),
-            stock: parseInt(v.stock, 10),
-            weight: parseFloat(v.weight),
-          })),
+            size: `${parseFloat(weight)}g`,
+            price: parseFloat(price),
+            stock: parseInt(stock, 10),
+            weight: parseFloat(weight),
+          }],
         }),
       });
 
@@ -249,6 +237,11 @@ export default function EditListingPage() {
         setSaving(false);
         return;
       }
+
+      // Reset the data loaded refs so fresh data can be loaded if user stays on page
+      dataLoadedRef.current = null;
+      isFetchingRef.current = false;
+      variantsLoadedRef.current = false;
 
       // Success - redirect to listings page
       router.push('/seller/listings');
@@ -416,68 +409,45 @@ export default function EditListingPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Variants & Pricing *</CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={addVariant}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Variant
-              </Button>
-            </div>
+            <CardTitle>Pricing & Details *</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {variants.map((variant) => (
-              <div
-                key={variant.id}
-                className="grid grid-cols-4 gap-4 p-4 rounded-lg bg-muted/50"
-              >
-                <div className="space-y-2">
-                  <Label>Price ($) *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={variant.price}
-                    onChange={(e) => updateVariant(variant.id, 'price', e.target.value)}
-                    placeholder="18.5"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Stock *</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={variant.stock}
-                    onChange={(e) => updateVariant(variant.id, 'stock', e.target.value)}
-                    placeholder="50"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Weight (g) *</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={variant.weight}
-                    onChange={(e) => updateVariant(variant.id, 'weight', e.target.value)}
-                    placeholder="250"
-                    required
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeVariant(variant.id)}
-                    disabled={variants.length === 1}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Price ($) *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="18.5"
+                  required
+                />
               </div>
-            ))}
+              <div className="space-y-2">
+                <Label>Stock *</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value)}
+                  placeholder="50"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Weight (g) *</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="250"
+                  required
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
 

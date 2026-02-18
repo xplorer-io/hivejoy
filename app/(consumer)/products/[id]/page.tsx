@@ -35,7 +35,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const { producer, batch } = product;
   
   // Producer and batch are required for product display
-  if (!producer || !batch) notFound();
+  // If either is missing, the product is invalid (e.g., batch was deleted)
+  if (!producer || !batch) {
+    console.warn(`[ProductPage] Product ${id} is missing producer or batch. Producer: ${!!producer}, Batch: ${!!batch}`);
+    notFound();
+  }
   
   const initials = ProducerInitials(producer.businessName);
 
@@ -69,14 +73,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <div className="lg:sticky lg:top-24 space-y-6">
               {/* Title + badge */}
               <div>
-                {producer.badgeLevel !== 'none' ? (
-                  <Badge className="mb-3 gap-1 rounded-full bg-amber-500/90 px-2.5 py-1 text-white hover:bg-amber-500">
-                    <Shield className="h-3.5 w-3.5" />
-                    {producer.badgeLevel === 'premium'
-                      ? 'Premium producer'
-                      : 'Verified producer'}
-                  </Badge>
-                ) : null}
+                <Badge className="mb-3 gap-1 rounded-full bg-amber-500/90 px-2.5 py-1 text-white hover:bg-amber-500">
+                  <Shield className="h-3.5 w-3.5" />
+                  {(producer.badgeLevel || 'verified') === 'premium'
+                    ? 'Premium producer'
+                    : 'Verified producer'}
+                </Badge>
 
                 <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
                   {product.title}
