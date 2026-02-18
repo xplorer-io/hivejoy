@@ -239,12 +239,13 @@ export async function DELETE(
       );
     }
 
-    if (productsUsingBatch && productsUsingBatch.length > 0) {
+    const productsList = Array.isArray(productsUsingBatch) ? productsUsingBatch : [];
+    if (productsList.length > 0) {
       return NextResponse.json(
         { 
           success: false, 
-          error: `Cannot delete batch. It is being used by ${productsUsingBatch.length} product(s). Please remove or reassign products first.`,
-          products: productsUsingBatch.map((p: { id: string; title: string; status: string }) => ({
+          error: `Cannot delete batch. It is being used by ${productsList.length} product(s). Please remove or reassign products first.`,
+          products: productsList.map((p: { id: string; title: string; status: string }) => ({
             id: p.id,
             title: p.title,
             status: p.status,

@@ -127,7 +127,8 @@ export async function PATCH(
       );
     }
 
-    if (!products || products.length !== productIds.length) {
+    const productList = Array.isArray(products) ? products : [];
+    if (productList.length !== productIds.length) {
       return NextResponse.json(
         { success: false, error: 'Some products not found or do not belong to you' },
         { status: 403 }

@@ -14,6 +14,7 @@ type MockQueryBuilder = {
   select: (..._args: unknown[]) => MockQueryBuilder
   insert: (..._args: unknown[]) => MockQueryBuilder
   update: (..._args: unknown[]) => MockQueryBuilder
+  upsert: (..._args: unknown[]) => MockQueryBuilder
   delete: (..._args: unknown[]) => MockQueryBuilder
   eq: (..._args: unknown[]) => MockQueryBuilder
   neq: (..._args: unknown[]) => MockQueryBuilder
@@ -55,6 +56,7 @@ function createMockQueryBuilder(): MockQueryBuilder {
     select: () => builder,
     insert: () => builder,
     update: () => builder,
+    upsert: () => builder,
     delete: () => builder,
     eq: () => builder,
     neq: () => builder,
