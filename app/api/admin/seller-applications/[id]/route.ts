@@ -166,6 +166,7 @@ export async function PATCH(
         application_approved_at: new Date().toISOString(),
         approved_by: user.id,
         verification_status: 'approved',
+        badge_level: 'verified',
       };
     } else {
       // reject

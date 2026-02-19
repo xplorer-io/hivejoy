@@ -34,13 +34,11 @@ export async function sendOTP(emailOrPhone: string): Promise<{ success: boolean;
     const isEmail = isValidEmail(emailOrPhone)
     
     if (isEmail) {
-      // Request OTP code (not magic link) by not providing emailRedirectTo
-      // and ensuring the email template in Supabase is configured for OTP
+      // Request OTP (no emailRedirectTo = OTP mode; Supabase sends 8-digit code, not link)
       const { error } = await supabase.auth.signInWithOtp({
         email: emailOrPhone,
         options: {
           shouldCreateUser: true,
-          // Don't set emailRedirectTo - this forces OTP mode instead of magic link
         },
       })
       

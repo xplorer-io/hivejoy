@@ -123,7 +123,10 @@ function mapProducer(row: ProducerRow): ProducerProfile {
     profileImage: row.profile_image,
     coverImage: row.cover_image || DEFAULT_COVER_IMAGE,
     verificationStatus: row.verification_status as ProducerProfile['verificationStatus'],
-    badgeLevel: row.badge_level as ProducerProfile['badgeLevel'],
+    // Approved producers show as verified if badge_level is not already premium
+    badgeLevel: (row.verification_status === 'approved' && row.badge_level !== 'premium')
+      ? 'verified'
+      : (row.badge_level as ProducerProfile['badgeLevel']) || 'none',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

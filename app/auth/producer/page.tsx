@@ -18,13 +18,17 @@ function ProducerAuthContent() {
     otp,
     loading,
     error,
+    cooldownSeconds,
     setEmail,
     setOtp,
     setStep,
-    handleSendOTP,
+    handleSendCode,
     handleVerifyOTP,
     handleSocialSignIn,
   } = useAuth();
+  const cooldownMin = Math.floor(cooldownSeconds / 60);
+  const cooldownSec = cooldownSeconds % 60;
+  const cooldownLabel = cooldownSeconds > 0 ? `${cooldownMin}:${cooldownSec.toString().padStart(2, '0')}` : '';
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950 dark:to-orange-950">
@@ -49,7 +53,6 @@ function ProducerAuthContent() {
         <CardContent>
           {step === 'email' ? (
             <div className="space-y-4">
-              {/* Social Sign-In Buttons */}
               <div className="space-y-2">
                 <Button
                   type="button"
@@ -82,8 +85,7 @@ function ProducerAuthContent() {
                 </div>
               </div>
 
-              {/* Email OTP Form */}
-              <form onSubmit={handleSendOTP} className="space-y-4">
+              <form onSubmit={handleSendCode} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <div className="relative">
@@ -103,9 +105,25 @@ function ProducerAuthContent() {
                 {error && (
                   <p className="text-sm text-destructive">{error}</p>
                 )}
+                {cooldownSeconds > 0 && (
+                  <>
+                    <p className="text-sm text-muted-foreground text-center">
+                      You can request another code in {cooldownLabel}.
+                    </p>
+                    {error && /too many requests/i.test(error) && (
+                      <p className="text-sm text-muted-foreground text-center">
+                        Or sign in with Google or Facebook above to avoid the wait.
+                      </p>
+                    )}
+                  </>
+                )}
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Sending...' : 'Send Code'}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading || cooldownSeconds > 0}
+                >
+                  {loading ? 'Sending...' : cooldownSeconds > 0 ? `Wait ${cooldownLabel}` : 'Send code'}
                 </Button>
 
                 <p className="text-center text-sm text-muted-foreground">
@@ -116,15 +134,17 @@ function ProducerAuthContent() {
           ) : (
             <form onSubmit={handleVerifyOTP} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="otp">Verification Code</Label>
+                <Label htmlFor="otp">Verification code</Label>
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="otp"
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     placeholder="12345678"
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 8))}
                     className="pl-10 text-center text-lg tracking-widest"
                     maxLength={8}
                     required

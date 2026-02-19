@@ -16,6 +16,16 @@ export function useAuth(role?: UserRole) {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  // Countdown timer for cooldown
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const id = setInterval(() => {
+      setCooldownSeconds((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [cooldownSeconds]);
 
   // Check for OAuth errors in URL params
   useEffect(() => {
@@ -25,8 +35,9 @@ export function useAuth(role?: UserRole) {
     }
   }, [searchParams]);
 
-  const handleSendOTP = async (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (cooldownSeconds > 0) return;
     setLoading(true);
     setError('');
 
@@ -34,11 +45,14 @@ export function useAuth(role?: UserRole) {
       const result = await sendOTP(email);
       if (result.success) {
         setStep('otp');
+        setCooldownSeconds(60); // 1 min cooldown before requesting another code
       } else {
         setError(result.message);
+        const isRateLimit = /too many requests|rate limit/i.test(result.message);
+        if (isRateLimit) setCooldownSeconds(300); // 5 min when rate limited (Supabase 60s per-user; this is for “too many requests”)
       }
     } catch {
-      setError('Failed to send OTP. Please try again.');
+      setError('Failed to send code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -53,13 +67,12 @@ export function useAuth(role?: UserRole) {
       const result = await verifyOTP(email, otp);
       if (result.success && result.user) {
         setUser(result.user);
-        // Always redirect to home page - role-based access is handled by middleware and layouts
         router.push('/');
       } else {
-        setError(result.message);
+        setError(result.message ?? 'Invalid or expired code. Please try again.');
       }
     } catch {
-      setError('Failed to verify OTP. Please try again.');
+      setError('Verification failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -98,18 +111,16 @@ export function useAuth(role?: UserRole) {
   };
 
   return {
-    // State
     step,
     email,
     otp,
     loading,
     error,
-    // Setters
+    cooldownSeconds,
     setEmail,
     setOtp,
     setStep,
-    // Handlers
-    handleSendOTP,
+    handleSendCode,
     handleVerifyOTP,
     handleSocialSignIn,
   };
