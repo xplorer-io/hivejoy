@@ -147,41 +147,25 @@ export default function SellerLayout({
     pathname === '/seller/application-sent';
 
   // Early return: Always allow access to registration/apply/application-sent pages
+  // Hide sidebar entirely - non-verified users shouldn't see seller navigation
   if (isRegistrationPage) {
     return (
-      <div className="flex min-h-screen">
-        {/* Desktop Sidebar - hidden on registration pages */}
-        <aside className="hidden lg:flex w-64 flex-col border-r bg-muted/30">
-          <SidebarContent />
-        </aside>
-
-        {/* Mobile Header */}
-        <div className="flex-1 flex flex-col">
-          <header className="lg:hidden flex items-center justify-between p-4 border-b">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-0">
-                <SidebarContent />
-              </SheetContent>
-            </Sheet>
-
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-lg">🍯</span>
-              </div>
-              <span className="font-bold">Seller Portal</span>
-            </Link>
-
-            <div className="w-10" /> {/* Spacer for centering */}
-          </header>
-
-          {/* Main Content */}
-          <main className="flex-1 p-4 lg:p-8">{children}</main>
-        </div>
+      <div className="flex min-h-screen flex-col">
+        <header className="flex items-center justify-between p-4 border-b">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <span className="text-lg">🍯</span>
+            </div>
+            <span className="font-bold">Hive Joy</span>
+          </Link>
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Button>
+          </Link>
+        </header>
+        <main className="flex-1 p-4 lg:p-8">{children}</main>
       </div>
     );
   }
@@ -191,9 +175,9 @@ export default function SellerLayout({
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold mb-2">Producer Access Required</h1>
+          <h1 className="text-2xl font-bold mb-2">Seller Access Required</h1>
           <p className="text-muted-foreground mb-4">
-            This area is only accessible to verified producers.
+            This area is only accessible to verified sellers.
           </p>
           <Link href="/seller/apply">
             <Button className="mb-2">Become a Seller</Button>

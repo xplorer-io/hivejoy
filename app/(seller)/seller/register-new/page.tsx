@@ -44,6 +44,32 @@ const MONTHS = [
 
 type FormStep = 1 | 2 | 3 | 4 | 5 | 6;
 
+/**
+ * Validate an Australian Business Number using the official ATO checksum algorithm.
+ * https://abr.business.gov.au/Help/AbnFormat
+ */
+function validateABN(abn: string): boolean {
+  const digits = abn.replace(/\s/g, '');
+  if (digits.length !== 11 || !/^\d{11}$/.test(digits)) return false;
+  const weights = [10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
+  // Subtract 1 from the first digit
+  const nums = digits.split('').map(Number);
+  nums[0] -= 1;
+  const sum = nums.reduce((acc, val, i) => acc + val * weights[i], 0);
+  return sum % 89 === 0;
+}
+
+/** Check if an Australian phone number has enough digits (10+ when stripped). */
+function isValidAustralianPhone(phone: string): boolean {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 10;
+}
+
+/** Check if a string is a valid 4-digit Australian postcode. */
+function isValidPostcode(postcode: string): boolean {
+  return /^\d{4}$/.test(postcode.trim());
+}
+
 export default function SellerRegisterNewPage() {
   const router = useRouter();
   const { user } = useAuthStore();
@@ -292,19 +318,19 @@ export default function SellerRegisterNewPage() {
   const canProceedToNextStep = () => {
     switch (currentStep) {
       case 1:
-        return fullLegalName.trim() !== '' && businessName.trim() !== '' && sellerType !== '' && 
-               (sellerType === 'individual' || (abn.trim() !== '' && abnConfirmed));
+        return isRegisteredBeekeeper && fullLegalName.trim() !== '' && businessName.trim() !== '' && sellerType !== '' &&
+               (sellerType === 'individual' || (abn.trim() !== '' && validateABN(abn) && abnConfirmed));
       case 2:
-        return primaryEmail.trim() !== '' && phoneNumber.trim() !== '';
+        return primaryEmail.trim() !== '' && phoneNumber.trim() !== '' && isValidAustralianPhone(phoneNumber);
       case 3:
-        return physicalStreet.trim() !== '' && physicalSuburb.trim() !== '' && 
-               physicalState !== '' && physicalPostcode.trim() !== '' &&
-               (!shippingDifferent || (shippingStreet.trim() !== '' && shippingSuburb.trim() !== '' && 
-                shippingState !== '' && shippingPostcode.trim() !== ''));
+        return physicalStreet.trim() !== '' && physicalSuburb.trim() !== '' &&
+               physicalState !== '' && isValidPostcode(physicalPostcode) &&
+               (!shippingDifferent || (shippingStreet.trim() !== '' && shippingSuburb.trim() !== '' &&
+                shippingState !== '' && isValidPostcode(shippingPostcode)));
       case 4:
-        return isRegisteredBeekeeper && beekeeperRegNumber.trim() !== '' && 
-               registeringAuthority !== '' && registrationProofUrl !== '' && 
-               apiaryPhotoUrl !== '' && declarationHiveOwner && declarationOwnHives && 
+        return beekeeperRegNumber.trim().length >= 3 &&
+               registeringAuthority !== '' && registrationProofUrl !== '' &&
+               apiaryPhotoUrl !== '' && declarationHiveOwner && declarationOwnHives &&
                declarationNoImported && declarationRawNatural;
       case 5:
         return numberOfHives !== '' && selectedFloralSources.length > 0 && 
@@ -612,7 +638,35 @@ export default function SellerRegisterNewPage() {
             {currentStep === 1 && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">A. Identity</h3>
+                  <h3 className="text-lg font-semibold mb-4">A. Eligibility & Identity</h3>
+
+                  {/* Beekeeper eligibility gate - must be first */}
+                  <Alert className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      You must be a registered Australian beekeeper to sell on Hive Joy.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="flex items-center gap-2 mb-6">
+                    <Checkbox
+                      id="isRegisteredBeekeeperStep1"
+                      checked={isRegisteredBeekeeper}
+                      onCheckedChange={(checked) => setIsRegisteredBeekeeper(checked === true)}
+                    />
+                    <Label htmlFor="isRegisteredBeekeeperStep1" className="cursor-pointer font-medium">
+                      I am a registered beekeeper in Australia *
+                    </Label>
+                  </div>
+
+                  {!isRegisteredBeekeeper && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
+                      <p className="text-sm text-amber-800">
+                        Only registered Australian beekeepers can sell on Hive Joy. If you are not a registered beekeeper, you are not eligible to apply.
+                      </p>
+                    </div>
+                  )}
+
+                  {isRegisteredBeekeeper && (
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="fullLegalName">Full Legal Name *</Label>
@@ -656,10 +710,17 @@ export default function SellerRegisterNewPage() {
                           <Input
                             id="abn"
                             value={abn}
-                            onChange={(e) => setAbn(e.target.value)}
-                            placeholder="11 digits"
+                            onChange={(e) => setAbn(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                            placeholder="e.g. 51824753556"
                             maxLength={11}
+                            inputMode="numeric"
                           />
+                          {abn.length > 0 && abn.length < 11 && (
+                            <p className="text-xs text-muted-foreground">ABN must be 11 digits</p>
+                          )}
+                          {abn.length === 11 && !validateABN(abn) && (
+                            <p className="text-xs text-destructive">Invalid ABN. Please check and re-enter.</p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <Checkbox
@@ -706,6 +767,7 @@ export default function SellerRegisterNewPage() {
                       </div>
                     </div>
                   </div>
+                  )}
                 </div>
               </div>
             )}
@@ -740,9 +802,13 @@ export default function SellerRegisterNewPage() {
                           id="phoneNumber"
                           type="tel"
                           value={phoneNumber}
-                          onChange={(e) => setPhoneNumber(e.target.value)}
+                          onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d\s\-+()]/g, ''))}
+                          placeholder="e.g. 0412 345 678"
                           required
                         />
+                        {phoneNumber.trim() !== '' && !isValidAustralianPhone(phoneNumber) && (
+                          <p className="text-xs text-destructive">Enter a valid Australian phone number (at least 10 digits)</p>
+                        )}
                       </div>
                     </div>
 
@@ -826,9 +892,15 @@ export default function SellerRegisterNewPage() {
                             <Input
                               id="physicalPostcode"
                               value={physicalPostcode}
-                              onChange={(e) => setPhysicalPostcode(e.target.value)}
+                              onChange={(e) => setPhysicalPostcode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                              placeholder="e.g. 3000"
+                              inputMode="numeric"
+                              maxLength={4}
                               required
                             />
+                            {physicalPostcode.length > 0 && !isValidPostcode(physicalPostcode) && (
+                              <p className="text-xs text-destructive">Postcode must be 4 digits</p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -886,9 +958,15 @@ export default function SellerRegisterNewPage() {
                               <Input
                                 id="shippingPostcode"
                                 value={shippingPostcode}
-                                onChange={(e) => setShippingPostcode(e.target.value)}
+                                onChange={(e) => setShippingPostcode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                placeholder="e.g. 3000"
+                                inputMode="numeric"
+                                maxLength={4}
                                 required
                               />
+                              {shippingPostcode.length > 0 && !isValidPostcode(shippingPostcode) && (
+                                <p className="text-xs text-destructive">Postcode must be 4 digits</p>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -903,36 +981,22 @@ export default function SellerRegisterNewPage() {
             {currentStep === 4 && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">D. Beekeeper Verification (Critical Section)</h3>
-                  <Alert className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      You must be a registered Australian beekeeper to sell on Hive Joy.
-                    </AlertDescription>
-                  </Alert>
+                  <h3 className="text-lg font-semibold mb-4">D. Beekeeper Verification Details</h3>
 
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="isRegisteredBeekeeper"
-                        checked={isRegisteredBeekeeper}
-                        onCheckedChange={(checked) => setIsRegisteredBeekeeper(checked === true)}
-                      />
-                      <Label htmlFor="isRegisteredBeekeeper" className="cursor-pointer font-medium">
-                        Are you a registered beekeeper in Australia? * (Must be Yes)
-                      </Label>
-                    </div>
-
-                    {isRegisteredBeekeeper && (
-                      <>
                         <div className="space-y-2">
                           <Label htmlFor="beekeeperRegNumber">Beekeeper Registration Number *</Label>
                           <Input
                             id="beekeeperRegNumber"
                             value={beekeeperRegNumber}
-                            onChange={(e) => setBeekeeperRegNumber(e.target.value)}
+                            onChange={(e) => setBeekeeperRegNumber(e.target.value.replace(/[^a-zA-Z0-9\-\s]/g, ''))}
+                            placeholder="e.g. BK-12345"
+                            maxLength={20}
                             required
                           />
+                          {beekeeperRegNumber.length > 0 && beekeeperRegNumber.trim().length < 3 && (
+                            <p className="text-xs text-destructive">Registration number must be at least 3 characters</p>
+                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -1056,8 +1120,6 @@ export default function SellerRegisterNewPage() {
                             </div>
                           </div>
                         </div>
-                      </>
-                    )}
                   </div>
                 </div>
               </div>
@@ -1253,7 +1315,7 @@ export default function SellerRegisterNewPage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="localCouncilAuthority">Local Council or Authority Name *</Label>
+                          <Label htmlFor="localCouncilAuthority">Local Council or Authority Name (Optional)</Label>
                           <Input
                             id="localCouncilAuthority"
                             value={localCouncilAuthority}
