@@ -366,7 +366,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { 
             success: false, 
-            error: `Failed to create producer: ${retryResult.error.message}. Please ensure the database migration has been run: migrations/add_seller_onboarding_fields.sql` 
+            error: `Failed to create producer: ${retryResult.error.message}. Please ensure the database migration has been run: migrations/20260211000002_add_seller_onboarding_fields.sql` 
           },
           { status: 500 }
         );

@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { getDefaultCoverImageUrl } from '@/lib/constants/images';
 import type {
   User,
   ProducerProfile,
@@ -101,10 +102,6 @@ export async function getUserProfile(userId: string): Promise<User | null> {
   };
 }
 
-// Default cover image for producers (Hivejoy branded)
-// Using AI_generated_honey.jpg as default until a branded cover is created
-const DEFAULT_COVER_IMAGE = '/images/AI_generated_honey.jpg';
-
 // Helper to convert database row to ProducerProfile
 function mapProducer(row: ProducerRow): ProducerProfile {
   return {
@@ -121,7 +118,7 @@ function mapProducer(row: ProducerRow): ProducerProfile {
     },
     bio: row.bio,
     profileImage: row.profile_image,
-    coverImage: row.cover_image || DEFAULT_COVER_IMAGE,
+    coverImage: row.cover_image || getDefaultCoverImageUrl(),
     verificationStatus: row.verification_status as ProducerProfile['verificationStatus'],
     // Approved producers show as verified if badge_level is not already premium
     badgeLevel: (row.verification_status === 'approved' && row.badge_level !== 'premium')
@@ -741,7 +738,7 @@ export async function getFeaturedProducts(): Promise<ProductWithDetails[]> {
     if (error.message && error.message !== 'Supabase not configured') {
       // Check for infinite recursion error - this is a database policy issue
       if (error.message.includes('infinite recursion')) {
-        console.error('Error fetching featured products: Infinite recursion in RLS policy. Please run the migration fix_admin_profiles_policy_recursion.sql in Supabase.');
+        console.error('Error fetching featured products: Infinite recursion in RLS policy. Please run the migration 20260215000007_fix_admin_profiles_policy_recursion.sql in Supabase.');
       } else {
         console.error('Error fetching featured products:', error.message || error);
       }

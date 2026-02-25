@@ -17,12 +17,8 @@ export default function TestCloudinaryPage() {
     if (selectedFile) {
       setFile(selectedFile);
       setResult(null);
-      
-      // Create preview
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
+      reader.onloadend = () => setPreview(reader.result as string);
       reader.readAsDataURL(selectedFile);
     }
   };
@@ -32,10 +28,8 @@ export default function TestCloudinaryPage() {
       setResult({ success: false, error: 'Please select a file first' });
       return;
     }
-
     setUploading(true);
     setResult(null);
-
     try {
       const uploadResult = await uploadImage(file, 'products');
       setResult(uploadResult);
@@ -60,89 +54,48 @@ export default function TestCloudinaryPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* File Input */}
             <div className="space-y-2">
-              <label htmlFor="file" className="text-sm font-medium">
-                Select Image
-              </label>
+              <label htmlFor="file" className="text-sm font-medium">Select Image</label>
               <input
                 id="file"
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
-                className="block w-full text-sm text-gray-500
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-full file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-primary file:text-primary-foreground
-                  hover:file:bg-primary/90
-                  cursor-pointer"
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
               />
             </div>
-
-            {/* Preview */}
             {preview && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Preview</label>
                 <div className="relative w-full h-64 border rounded-lg overflow-hidden bg-muted">
-                  <Image
-                    src={preview}
-                    alt="Preview"
-                    fill
-                    className="object-contain"
-                  />
+                  <Image src={preview} alt="Preview" fill className="object-contain" />
                 </div>
               </div>
             )}
-
-            {/* Upload Button */}
-            <Button
-              onClick={handleUpload}
-              disabled={!file || uploading}
-              className="w-full"
-            >
+            <Button onClick={handleUpload} disabled={!file || uploading} className="w-full">
               {uploading ? 'Uploading...' : 'Upload to Cloudinary'}
             </Button>
-
-            {/* Result */}
             {result && (
               <div
                 className={`p-4 rounded-lg ${
-                  result.success
-                    ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800'
-                    : 'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800'
+                  result.success ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800'
                 }`}
               >
-                <h3 className="font-semibold mb-2">
-                  {result.success ? '✅ Upload Successful!' : '❌ Upload Failed'}
-                </h3>
-                
+                <h3 className="font-semibold mb-2">{result.success ? '✅ Upload Successful!' : '❌ Upload Failed'}</h3>
                 {result.success && result.url && (
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm font-medium mb-1">Cloudinary URL:</p>
                       <p className="text-sm break-all text-muted-foreground">{result.url}</p>
                     </div>
-                    
                     <div>
                       <p className="text-sm font-medium mb-2">Uploaded Image:</p>
                       <div className="relative w-full h-64 border rounded-lg overflow-hidden bg-muted">
-                        <Image
-                          src={result.url}
-                          alt="Uploaded"
-                          fill
-                          className="object-contain"
-                          unoptimized
-                        />
+                        <Image src={result.url} alt="Uploaded" fill className="object-contain" unoptimized />
                       </div>
-                    </div>
-
-                    <div className="p-3 bg-muted rounded text-xs font-mono break-all">
-                      {result.url}
                     </div>
                   </div>
                 )}
-
                 {!result.success && result.error && (
                   <div>
                     <p className="text-sm font-medium mb-1">Error:</p>
@@ -151,31 +104,11 @@ export default function TestCloudinaryPage() {
                 )}
               </div>
             )}
-
-            {/* Environment Check */}
             <div className="p-4 bg-muted rounded-lg">
               <h4 className="font-semibold mb-2 text-sm">Environment Variables Check:</h4>
               <ul className="text-xs space-y-1 font-mono">
-                <li>
-                  CLOUD_NAME:{' '}
-                  {process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ? (
-                    <span className="text-green-600 dark:text-green-400">✓ Set</span>
-                  ) : (
-                    <span className="text-red-600 dark:text-red-400">✗ Missing</span>
-                  )}
-                </li>
-                <li>
-                  API_KEY:{' '}
-                  <span className="text-muted-foreground text-xs">(Optional - not used for unsigned uploads)</span>
-                </li>
-                <li>
-                  UPLOAD_PRESET:{' '}
-                  {process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ? (
-                    <span className="text-green-600 dark:text-green-400">✓ Set</span>
-                  ) : (
-                    <span className="text-red-600 dark:text-red-400">✗ Missing</span>
-                  )}
-                </li>
+                <li>CLOUD_NAME: {process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ? <span className="text-green-600 dark:text-green-400">✓ Set</span> : <span className="text-red-600 dark:text-red-400">✗ Missing</span>}</li>
+                <li>UPLOAD_PRESET: {process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ? <span className="text-green-600 dark:text-green-400">✓ Set</span> : <span className="text-red-600 dark:text-red-400">✗ Missing</span>}</li>
               </ul>
             </div>
           </CardContent>

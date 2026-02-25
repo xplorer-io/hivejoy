@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getProducer, getProducerListings } from '@/lib/api';
+import { getDefaultCoverImageUrl } from '@/lib/constants/images';
 import { ProductCard } from '@/components/shared';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -51,7 +52,7 @@ export default async function ProducerPage({ params }: ProducerPageProps) {
       {/* Cover Image */}
       <div className="h-48 md:h-64 relative bg-gradient-to-br from-amber-200 to-amber-400">
         <Image
-          src={producer.coverImage || '/images/AI_generated_honey.jpg'}
+          src={producer.coverImage || getDefaultCoverImageUrl()}
           alt={producer.businessName}
           fill
           className="object-cover"

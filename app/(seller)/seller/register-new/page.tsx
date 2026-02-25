@@ -329,7 +329,9 @@ export default function SellerRegisterNewPage() {
                 shippingState !== '' && isValidPostcode(shippingPostcode)));
       case 4:
         return beekeeperRegNumber.trim().length >= 3 &&
-               registeringAuthority !== '' && registrationProofUrl !== '' &&
+               registeringAuthority !== '' &&
+               (registeringAuthority !== 'Other' || registeringAuthorityOther.trim().length >= 1) &&
+               registrationProofUrl !== '' &&
                apiaryPhotoUrl !== '' && declarationHiveOwner && declarationOwnHives &&
                declarationNoImported && declarationRawNatural;
       case 5:
@@ -1321,7 +1323,6 @@ export default function SellerRegisterNewPage() {
                             value={localCouncilAuthority}
                             onChange={(e) => setLocalCouncilAuthority(e.target.value)}
                             placeholder="e.g., City of Melbourne"
-                            required
                           />
                         </div>
 
