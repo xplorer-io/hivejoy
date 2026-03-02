@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
-import { isSessionVerified, clearCheckout } from '@/lib/stripe/checkout-store';
+import { clearCheckout } from '@/lib/stripe/checkout-store';
 
 function getStripeClient() {
   const apiKey = process.env.STRIPE_SECRET_KEY;
@@ -45,13 +45,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Session mismatch' }, { status: 403 });
     }
 
-    const verified = isSessionVerified(sessionId);
     const paid = session.payment_status === 'paid';
+    const complete = session.status === 'complete';
+    const verified = paid && complete;
 
     const response = NextResponse.json({
       status: session.status,
       payment_status: session.payment_status,
       paid,
+      complete,
       verified,
     });
 
