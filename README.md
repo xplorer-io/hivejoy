@@ -64,6 +64,13 @@ NEXT_PUBLIC_POSTHOG_KEY=
 NEXT_PUBLIC_POSTHOG_HOST=
 ```
 
+### Stripe Reconciliation
+
+If a checkout is paid in Stripe but missing from orders, use:
+
+- `/api/checkout/reconcile?session_id=...` to inspect Stripe payment/session state
+- [Stripe reconciliation runbook](./STRIPE_RECONCILIATION_RUNBOOK.md) for end-to-end recovery steps
+
 ## 📁 Project Structure
 
 ```
