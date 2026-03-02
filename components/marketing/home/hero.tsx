@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight } from 'lucide-react';
 
+import { getDefaultCoverImageUrl } from '@/lib/constants/images';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { HeroSearch } from './hero-search';
@@ -70,7 +71,7 @@ export function Hero() {
               {/* Main image */}
               <div className="absolute inset-0 overflow-hidden rounded-3xl border-2 border-amber-200/40 bg-white/40 shadow-xl dark:border-amber-800/40 dark:bg-white/5">
                 <Image
-                  src="/images/AI_generated_honey.jpg"
+                  src={getDefaultCoverImageUrl()}
                   alt="Pure Australian honey in jars"
                   fill
                   className="object-cover transition-transform duration-700 hover:scale-105"

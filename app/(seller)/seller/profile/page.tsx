@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Shield, Upload, Loader2, Save, X } from 'lucide-react';
 import { uploadImage } from '@/lib/cloudinary/upload';
+import { getDefaultCoverImageUrl } from '@/lib/constants/images';
 
 interface ProducerData {
   id: string;
@@ -363,10 +365,12 @@ export default function SellerProfilePage() {
         <CardContent>
           <div className="space-y-4">
             <div className="relative h-48 md:h-64 rounded-lg overflow-hidden bg-gradient-to-br from-amber-200 to-amber-400">
-              <img
-                src={coverImagePreview || formData.coverImage || producer.coverImage || '/images/AI_generated_honey.jpg'}
+              <Image
+                src={coverImagePreview || formData.coverImage || producer.coverImage || getDefaultCoverImageUrl()}
                 alt="Cover"
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(min-width: 768px) 768px, 100vw"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
             </div>

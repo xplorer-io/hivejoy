@@ -296,7 +296,7 @@ export async function DELETE(
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Batch deletion failed - no rows were deleted. This usually means the RLS DELETE policy is missing. Please run the migration: migrations/add_batches_delete_policy.sql' 
+          error: 'Batch deletion failed - no rows were deleted. This usually means the RLS DELETE policy is missing. Please run the migration: migrations/20260218000012_add_batches_delete_policy.sql' 
         },
         { status: 500 }
       );
@@ -317,7 +317,7 @@ export async function DELETE(
       console.error('[DELETE /api/batches] WARNING: Batch still exists after deletion!');
       const errorMsg = adminClient 
         ? 'Batch deletion failed - batch still exists in database. This may be a database constraint issue.'
-        : 'Batch deletion failed - batch still exists in database. Please run the migration: migrations/add_batches_delete_policy.sql or configure SUPABASE_SERVICE_ROLE_KEY.';
+        : 'Batch deletion failed - batch still exists in database. Please run the migration: migrations/20260218000012_add_batches_delete_policy.sql or configure SUPABASE_SERVICE_ROLE_KEY.';
       return NextResponse.json(
         { 
           success: false, 

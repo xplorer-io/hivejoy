@@ -46,8 +46,20 @@ export function ProductFilters({ mode = 'sheet' }: { mode?: Mode }) {
   const [search, setSearch] = React.useState(sp.get('search') ?? '');
   const debounceRef = React.useRef<number | null>(null);
 
+  const SEARCH_DEBOUNCE_MS = 500;
+
+  // Sync from URL to input only when it won't drop letters the user just typed
+  // (avoids stale URL overwriting longer input during debounce/navigation)
   React.useEffect(() => {
-    setSearch(sp.get('search') ?? '');
+    const urlSearch = sp.get('search') ?? '';
+    setSearch((prev) => {
+      if (urlSearch === prev) return prev;
+      if (urlSearch === '') return ''; // Clear all
+      if (prev === '') return urlSearch; // Initial load or external nav
+      // Don't overwrite if URL is shorter than current input (stale update)
+      if (urlSearch.length < prev.length) return prev;
+      return urlSearch;
+    });
   }, [sp]);
 
   const setParam = React.useCallback(
@@ -62,6 +74,14 @@ export function ProductFilters({ mode = 'sheet' }: { mode?: Mode }) {
     },
     [router, pathname, sp],
   );
+
+  const applySearchNow = React.useCallback(() => {
+    if (debounceRef.current) {
+      window.clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    setParam('search', search.trim() || null);
+  }, [search, setParam]);
 
   const clearFilters = React.useCallback(() => {
     router.push(pathname);
@@ -85,24 +105,43 @@ export function ProductFilters({ mode = 'sheet' }: { mode?: Mode }) {
       <CardContent className="space-y-5">
         <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">Search</Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => {
-                const v = e.target.value;
-                setSearch(v);
-
-                if (debounceRef.current)
-                  window.clearTimeout(debounceRef.current);
-                debounceRef.current = window.setTimeout(() => {
-                  setParam('search', v.trim() || null);
-                }, 250);
-              }}
-              placeholder="Floral type, region, producer…"
-              className="h-11 rounded-2xl pl-9"
-            />
+          <div className="relative flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                value={search}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSearch(v);
+                  if (debounceRef.current) window.clearTimeout(debounceRef.current);
+                  debounceRef.current = window.setTimeout(() => {
+                    setParam('search', v.trim() || null);
+                  }, SEARCH_DEBOUNCE_MS);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    applySearchNow();
+                  }
+                }}
+                placeholder="Floral type, region, producer…"
+                className="h-11 rounded-2xl pl-9"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="h-11 w-11 shrink-0 rounded-2xl"
+              onClick={applySearchNow}
+              aria-label="Apply search"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Type to filter live, or press Enter / click search to apply now.
+          </p>
         </div>
 
         <Separator />

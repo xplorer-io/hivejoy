@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, Sparkles, Users } from 'lucide-react';
+import { getFounderImageUrl } from '@/lib/constants/images';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 
 export default async function OurStoryPage() {
   return (
@@ -56,7 +56,7 @@ export default async function OurStoryPage() {
 
                 <div className="relative aspect-[4/3] overflow-hidden rounded-xl border-2 border-amber-200/60 shadow-lg dark:border-amber-800/60">
                   <Image
-                    src="/images/ziad-founder.png"
+                    src={getFounderImageUrl()}
                     alt="Ziad, founder of Hive Joy, holding honey jars at an outdoor event"
                     fill
                     className="object-cover"

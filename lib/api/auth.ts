@@ -50,10 +50,10 @@ export async function verifyOTP(
 ): Promise<{ success: boolean; user?: User; message: string }> {
   try {
     const supabase = createClient()
-    
+
     // Validate if it's an email using proper email format validation
     const isEmail = isEmailFormat(emailOrPhone)
-    
+
     let result
     if (isEmail) {
       result = await supabase.auth.verifyOtp({
@@ -68,21 +68,21 @@ export async function verifyOTP(
         type: 'sms',
       })
     }
-    
+
     if (result.error) {
       return {
         success: false,
         message: result.error.message,
       }
     }
-    
+
     if (!result.data.user) {
       return {
         success: false,
         message: 'User not found',
       }
     }
-    
+
     // Ensure profile exists by calling the API endpoint
     // This will create the profile if it doesn't exist
     let user = mapSupabaseUser(result.data.user);
@@ -110,7 +110,7 @@ export async function verifyOTP(
         // Profile will be created automatically on next request
       }
     }
-    
+
     return {
       success: true,
       user,
@@ -128,11 +128,11 @@ export async function getCurrentUser(userId: string): Promise<User | null> {
   try {
     const supabase = createClient()
     const { data: { user }, error } = await supabase.auth.getUser()
-    
+
     if (error || !user || user.id !== userId) {
       return null
     }
-    
+
     return mapSupabaseUser(user)
   } catch {
     return null
@@ -157,9 +157,9 @@ export async function signOut() {
     const { error } = await supabase.auth.signOut()
     return { success: !error, error: error?.message }
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to sign out' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to sign out'
     }
   }
 }
@@ -177,9 +177,9 @@ export async function signInWithGoogle(): Promise<{ success: boolean; error?: st
     })
     return { success: !error, error: error?.message }
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to sign in with Google' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to sign in with Google'
     }
   }
 }
@@ -197,9 +197,9 @@ export async function signInWithFacebook(): Promise<{ success: boolean; error?: 
     })
     return { success: !error, error: error?.message }
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to sign in with Facebook' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to sign in with Facebook'
     }
   }
 }
@@ -216,9 +216,9 @@ export async function signInWithApple(): Promise<{ success: boolean; error?: str
     })
     return { success: !error, error: error?.message }
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to sign in with Apple' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to sign in with Apple'
     }
   }
 }
