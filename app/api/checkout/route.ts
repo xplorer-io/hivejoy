@@ -121,23 +121,28 @@ export async function POST(request: NextRequest) {
           throw new Error('Invalid cart item');
         }
 
+        const price = Number(variant.price);
+        if (!Number.isFinite(price) || price <= 0) {
+          throw new Error('Invalid price for cart item');
+        }
+
         if (!Number.isInteger(quantity) || quantity <= 0 || quantity > variant.stock) {
           throw new Error('Invalid quantity');
         }
 
-        return { product, variant, quantity };
+        return { product, variant, quantity, price };
       })
     );
 
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = resolved.map(
-      ({ product, variant, quantity }) => ({
+      ({ product, variant, quantity, price }) => ({
         price_data: {
           currency: 'aud',
           product_data: {
             name: `${product.title} - ${variant.size}`,
             ...(product.photos?.[0] && { images: [product.photos[0]] }),
           },
-          unit_amount: Math.round(Number(variant.price) * 100),
+          unit_amount: Math.round(price * 100),
         },
         quantity,
       })
@@ -211,7 +216,9 @@ export async function POST(request: NextRequest) {
     console.error('Stripe checkout error:', error);
     const isClientError =
       error instanceof Error &&
-      (error.message === 'Invalid cart item' || error.message === 'Invalid quantity');
+      (error.message === 'Invalid cart item' ||
+        error.message === 'Invalid quantity' ||
+        error.message === 'Invalid price for cart item');
     const status = isClientError ? 400 : 500;
     const message = isClientError ? error.message : 'Failed to create checkout session';
 
