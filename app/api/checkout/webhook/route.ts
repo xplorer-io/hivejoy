@@ -21,7 +21,17 @@ export async function POST(request: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!stripe || !signature || !webhookSecret) {
-    return NextResponse.json({ error: 'Missing Stripe webhook configuration' }, { status: 400 });
+    const missing: string[] = [];
+    if (!stripe) missing.push('STRIPE_SECRET_KEY');
+    if (!signature) missing.push('stripe-signature');
+    if (!webhookSecret) missing.push('STRIPE_WEBHOOK_SECRET');
+    return NextResponse.json(
+      {
+        error: 'Missing Stripe webhook configuration',
+        missing,
+      },
+      { status: 400 }
+    );
   }
 
   const payload = Buffer.from(await request.arrayBuffer());
