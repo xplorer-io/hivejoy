@@ -125,14 +125,13 @@ function ProducerAuthContent() {
                 >
                   {loading ? 'Sending...' : cooldownSeconds > 0 ? `Wait ${cooldownLabel}` : 'Send code'}
                 </Button>
-
-                <p className="text-center text-sm text-muted-foreground">
-                  Enter the 8-digit code from your email
-                </p>
               </form>
             </div>
           ) : (
             <form onSubmit={handleVerifyOTP} className="space-y-4">
+              <p className="text-center text-sm text-muted-foreground">
+                Enter the 8-digit code from your email
+              </p>
               <div className="space-y-2">
                 <Label htmlFor="otp">Verification code</Label>
                 <div className="relative">

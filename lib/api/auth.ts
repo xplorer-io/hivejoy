@@ -1,17 +1,9 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client'
+import { isEmailFormat } from '@/lib/auth/disposable-email'
 import type { User } from '@/types'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
-
-// Validate email format using a proper regex pattern
-function isValidEmail(email: string): boolean {
-  // RFC 5322 compliant email regex (simplified but robust)
-  // Matches: user@domain.com, user.name@domain.co.uk, etc.
-  // Rejects: strings with @ but invalid format, phone numbers with @, etc.
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email.trim())
-}
 
 // Map Supabase user to your User type
 function mapSupabaseUser(supabaseUser: SupabaseUser): User {
@@ -26,65 +18,23 @@ function mapSupabaseUser(supabaseUser: SupabaseUser): User {
   }
 }
 
+/**
+ * Sends OTP via the server-side API. Disposable-email check and Supabase signInWithOtp
+ * run on the server so they cannot be bypassed; clients must not call signInWithOtp directly.
+ */
 export async function sendOTP(emailOrPhone: string): Promise<{ success: boolean; message: string }> {
   try {
-    const supabase = createClient()
-    
-    // Validate if it's an email using proper email format validation
-    const isEmail = isValidEmail(emailOrPhone)
-    
-    if (isEmail) {
-      // Request OTP (no emailRedirectTo = OTP mode; Supabase sends 8-digit code, not link)
-      const { error } = await supabase.auth.signInWithOtp({
-        email: emailOrPhone,
-        options: {
-          shouldCreateUser: true,
-        },
-      })
-      
-      if (error) {
-        const code = typeof (error as { code?: string }).code === 'string' ? (error as { code?: string }).code : undefined;
-        const status = typeof (error as { status?: number }).status === 'number' ? (error as { status?: number }).status : undefined;
-        const isProfileTriggerFailure = code !== undefined || status !== undefined
-          ? (code === '23505' || status === 422)
-          : (error.message.includes('Database error') || error.message.includes('updating user'));
-
-        if (isProfileTriggerFailure) {
-          console.warn('Profile creation trigger may have failed, but user was created:', error);
-          return {
-            success: true,
-            message: 'OTP sent successfully. Please check your email.',
-          };
-        }
-        if (error.message.includes('rate limit') || error.message.includes('too many')) {
-          return { success: false, message: 'Too many requests. Please wait a few minutes before trying again.' };
-        }
-        console.error('OTP send error:', error);
-        return {
-          success: false,
-          message: error.message || 'Something went wrong. Please try again.',
-        };
-      }
-    } else {
-      // For phone number OTP
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: emailOrPhone,
-        options: {
-          shouldCreateUser: true,
-        },
-      })
-      
-      if (error) {
-        return {
-          success: false,
-          message: error.message,
-        }
-      }
-    }
-    
+    const res = await fetch('/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emailOrPhone: emailOrPhone.trim() }),
+      credentials: 'include',
+    })
+    const data = (await res.json()) as { success?: boolean; message?: string }
+    const success = res.ok && data.success === true
     return {
-      success: true,
-      message: 'OTP sent successfully',
+      success,
+      message: typeof data.message === 'string' ? data.message : (success ? 'OTP sent successfully' : 'Failed to send OTP'),
     }
   } catch (error: unknown) {
     return {
@@ -102,7 +52,7 @@ export async function verifyOTP(
     const supabase = createClient()
     
     // Validate if it's an email using proper email format validation
-    const isEmail = isValidEmail(emailOrPhone)
+    const isEmail = isEmailFormat(emailOrPhone)
     
     let result
     if (isEmail) {
