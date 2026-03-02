@@ -196,7 +196,7 @@ export default async function proxy(request: NextRequest) {
 
     // Fetch user role from database
     try {
-      const { getUserProfile } = await import('@/lib/api/database')
+      const { getUserProfile } = await import('@/lib/api/profile')
       const profile = await getUserProfile(user.id)
 
       if (!profile) {
