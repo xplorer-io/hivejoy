@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
-import { mockProducts } from '@/lib/api/mock-data';
+import { getProduct } from '@/lib/api/database';
 import { registerCheckout } from '@/lib/stripe/checkout-store';
 
 function getStripeClient() {
@@ -109,34 +109,43 @@ export async function POST(request: NextRequest) {
     const baseUrl = resolveBaseUrl();
     const checkoutNonce = crypto.randomUUID();
 
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map(
-      (item) => {
+    const resolved = await Promise.all(
+      items.map(async (item) => {
         const productId = normalizeString(item.productId);
         const variantId = normalizeString(item.variantId);
         const quantity = Number(item.quantity);
-        const product = mockProducts.find((entry) => entry.id === productId);
+        const product = await getProduct(productId);
         const variant = product?.variants.find((entry) => entry.id === variantId);
 
         if (!product || !variant) {
           throw new Error('Invalid cart item');
         }
 
+        const price = Number(variant.price);
+        if (!Number.isFinite(price) || price <= 0) {
+          throw new Error('Invalid price for cart item');
+        }
+
         if (!Number.isInteger(quantity) || quantity <= 0 || quantity > variant.stock) {
           throw new Error('Invalid quantity');
         }
 
-        return {
-          price_data: {
-            currency: 'aud',
-            product_data: {
-              name: `${product.title} - ${variant.size}`,
-              ...(product.photos[0] && { images: [product.photos[0]] }),
-            },
-            unit_amount: Math.round(variant.price * 100),
+        return { product, variant, quantity, price };
+      })
+    );
+
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = resolved.map(
+      ({ product, variant, quantity, price }) => ({
+        price_data: {
+          currency: 'aud',
+          product_data: {
+            name: `${product.title} - ${variant.size}`,
+            ...(product.photos?.[0] && { images: [product.photos[0]] }),
           },
-          quantity,
-        };
-      }
+          unit_amount: Math.round(price * 100),
+        },
+        quantity,
+      })
     );
 
     const shippingCost = 12.0;
@@ -207,7 +216,9 @@ export async function POST(request: NextRequest) {
     console.error('Stripe checkout error:', error);
     const isClientError =
       error instanceof Error &&
-      (error.message === 'Invalid cart item' || error.message === 'Invalid quantity');
+      (error.message === 'Invalid cart item' ||
+        error.message === 'Invalid quantity' ||
+        error.message === 'Invalid price for cart item');
     const status = isClientError ? 400 : 500;
     const message = isClientError ? error.message : 'Failed to create checkout session';
 
