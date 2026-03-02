@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
 import { getProduct } from '@/lib/api/database';
 import { registerCheckout } from '@/lib/stripe/checkout-store';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 function getStripeClient() {
   const apiKey = process.env.STRIPE_SECRET_KEY;
@@ -192,6 +193,35 @@ export async function POST(request: NextRequest) {
       })),
       createdAt: Date.now(),
     });
+
+    const adminClient = createAdminClient();
+    if (adminClient) {
+      const { error: checkoutSessionError } = await adminClient
+        .from('checkout_sessions')
+        .upsert(
+          {
+            stripe_session_id: session.id,
+            checkout_nonce: checkoutNonce,
+            customer_email: email,
+            customer_phone: phone,
+            shipping_name: `${firstName} ${lastName}`,
+            shipping_street: address,
+            shipping_suburb: suburb,
+            shipping_state: state,
+            shipping_postcode: postcode,
+            shipping_country: 'Australia',
+            items: items.map((item) => ({
+              productId: normalizeString(item.productId),
+              variantId: normalizeString(item.variantId),
+              quantity: Number(item.quantity),
+            })),
+          },
+          { onConflict: 'stripe_session_id' }
+        );
+      if (checkoutSessionError) {
+        console.error('Failed to persist checkout session snapshot:', checkoutSessionError);
+      }
+    }
 
     const response = NextResponse.json({ url: session.url });
     const checkoutCookieMaxAge = 2 * 60 * 60; // keep in sync with checkout-store TTL
