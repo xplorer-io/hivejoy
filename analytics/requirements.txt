@@ -1,0 +1,8 @@
+pandas
+numpy
+faker
+matplotlib
+seaborn
+plotly
+jupyter
+nbformat
