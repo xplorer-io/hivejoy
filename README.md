@@ -59,10 +59,21 @@ npm start
 STRIPE_SECRET_KEY=
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 STRIPE_WEBHOOK_SECRET=
+STRIPE_WEBHOOK_ENDPOINT_URL=
 APP_BASE_URL=
 NEXT_PUBLIC_POSTHOG_KEY=
 NEXT_PUBLIC_POSTHOG_HOST=
 ```
+
+### Stripe Webhook Ops Check
+
+Use this endpoint to verify webhook-critical configuration before testing checkout:
+
+```bash
+curl http://localhost:3000/api/checkout/webhook/health
+```
+
+Expected result: HTTP `200` with `"ok": true`. If it returns `503`, fix any keys listed under `"missing"` first.
 
 ## 📁 Project Structure
 
