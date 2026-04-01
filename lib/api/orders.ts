@@ -3,6 +3,10 @@ import { mockOrders } from './mock-data';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+function shouldUseMockSource(userId: string) {
+  return userId.startsWith('producer-') || userId.startsWith('buyer-');
+}
+
 export async function getOrders(
   userId: string,
   role: 'buyer' | 'seller',
@@ -10,6 +14,26 @@ export async function getOrders(
   page: number = 1,
   pageSize: number = 10
 ): Promise<PaginatedResponse<Order>> {
+  if (!shouldUseMockSource(userId)) {
+    const params = new URLSearchParams({
+      userId,
+      role,
+      page: String(page),
+      pageSize: String(pageSize),
+    });
+    if (filters?.status) params.set('status', filters.status);
+    if (filters?.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters?.dateTo) params.set('dateTo', filters.dateTo);
+
+    const response = await fetch(`/api/orders?${params.toString()}`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch orders');
+    }
+    return response.json() as Promise<PaginatedResponse<Order>>;
+  }
+
   await delay(300);
 
   let filtered = role === 'buyer'
